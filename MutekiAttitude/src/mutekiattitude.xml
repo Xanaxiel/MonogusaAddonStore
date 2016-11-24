@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uiframe name="mutekiattitude" x="0" y="0" width="400" height="200" create="open">
+    <frame title="mutekiattitude" layout_gravity="center center" margin="0 0 200 0"/>
+    <input hittest="false"/>
+    <option closebutton="false" hideable="false"/>
+    <draw drawtitlebar="false"/>
+    <skin frameskin="none"/>
+    <controls>
+        <gauge name="gauge_229" rect="0 0 280 19" margin="0 10 0 0" hittest="false" layout_gravity="center top" text1="{s16}Ausirine{s20}{ol}%r" textalign1="right center" textoffset1="-5 0" visible="false"/>
+        <gauge name="gauge_94" rect="0 0 140 19" margin="-70 25 0 0" hittest="false" layout_gravity="center top" text1="{s16}SafetyZone" textalign1="center center" textoffset1="-5 0" visible="false" skin="pcinfo_gauge_sp2"/>
+        <gauge name="gauge_1021" rect="0 0 140 19" margin="70 25 0 0" hittest="false" layout_gravity="center top" text1="{s16}StereaThorf" textalign1="center center" textoffset1="-5 0" visible="false" skin="gauge_skillexp"/>
+    </controls>
+</uiframe>
