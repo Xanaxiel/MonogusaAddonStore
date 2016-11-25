@@ -29,4 +29,5 @@ function EASYSEARCH_INV_RBTN(itemObj, slot)
 	chip:SetCheck(1);
 	local name = dictionary.ReplaceDicIDInCompStr(itemObj.Name);
 	find_name:SetText(name);
+	SEARCH_ITEM_MARKET();
 end
