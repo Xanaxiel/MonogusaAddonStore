@@ -2,8 +2,15 @@ CHAT_SYSTEM("Easy Search loaded!");
 
 function EASYSEARCH_ON_INIT(addon, frame)
 	local acutil = require('acutil');
+
+	acutil.setupHook(EASYSEARCH_TO_MARKET_BUYMODE, 'MARKET_BUYMODE');
 	acutil.setupHook(EASYSEARCH_ON_OPEN_MARKET, 'ON_OPEN_MARKET');
 	acutil.setupHook(EASYSEARCH_ON_CLOSE_MARKET, 'MARKET_CLOSE');
+end
+
+function EASYSEARCH_TO_MARKET_BUYMODE(frame)
+	INVENTORY_SET_CUSTOM_RBTNDOWN("EASYSEARCH_INV_RBTN");
+	return MARKET_BUYMODE_OLD(frame);
 end
 
 function EASYSEARCH_ON_OPEN_MARKET(frame)
