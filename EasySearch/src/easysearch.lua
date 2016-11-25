@@ -1,0 +1,32 @@
+CHAT_SYSTEM("Easy Search loaded!");
+
+function EASYSEARCH_ON_INIT(addon, frame)
+	local acutil = require('acutil');
+	acutil.setupHook(EASYSEARCH_ON_OPEN_MARKET, 'ON_OPEN_MARKET');
+	acutil.setupHook(EASYSEARCH_ON_CLOSE_MARKET, 'MARKET_CLOSE');
+end
+
+function EASYSEARCH_ON_OPEN_MARKET(frame)
+	INVENTORY_SET_CUSTOM_RBTNDOWN("EASYSEARCH_INV_RBTN");
+	return ON_OPEN_MARKET_OLD(frame);
+end
+
+function EASYSEARCH_ON_CLOSE_MARKET(frame)
+	INVENTORY_SET_CUSTOM_RBTNDOWN("None");
+	return MARKET_CLOSE_OLD(frame);
+end
+
+function EASYSEARCH_INV_RBTN(itemObj, slot)
+	local frame = ui.GetFrame("market");
+	local icon = slot:GetIcon();
+	local iconInfo = icon:GetInfo();
+	local invItem = GET_PC_ITEM_BY_GUID(iconInfo:GetIESID());
+	local itemObj = GetIES(invItem:GetObject());
+
+	local gBox = GET_CHILD(frame, "detailOption");
+	local find_name = GET_CHILD(gBox, "find_edit", "ui::CEditControl");
+	local chip = GET_CHILD(gBox, "chip", "ui::CCheckBox");
+	chip:SetCheck(1);
+	local name = dictionary.ReplaceDicIDInCompStr(itemObj.Name);
+	find_name:SetText(name);
+end
