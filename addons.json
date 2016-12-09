@@ -27,5 +27,17 @@
 			"instance dungeon",
 			"count"
 		]
+	},
+	{
+		"name" : "EasySearch",
+		"file" : "easysearch",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.3",
+		"releaseTag" : "easysearch",
+		"unicode" : "⛄",
+		"description" : "Add-on that allows you to open the market and search items by right-clicking",
+		"tags" : [
+			"market"
+		]
 	}
 ]

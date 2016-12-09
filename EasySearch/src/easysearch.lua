@@ -25,10 +25,6 @@ end
 
 function EASYSEARCH_INV_RBTN(itemObj, slot)
 	local frame = ui.GetFrame("market");
-	local icon = slot:GetIcon();
-	local iconInfo = icon:GetInfo();
-	local invItem = GET_PC_ITEM_BY_GUID(iconInfo:GetIESID());
-	local itemObj = GetIES(invItem:GetObject());
 
 	local gBox = GET_CHILD(frame, "detailOption");
 	local find_name = GET_CHILD(gBox, "find_edit", "ui::CEditControl");
