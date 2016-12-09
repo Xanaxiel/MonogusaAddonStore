@@ -18,7 +18,7 @@ if not g.loaded then
 end
 g.settingsFileLoc = "../addons/"..addonNameLower.."/settings.json";
 
-function g.processCommand(words)
+function MUTEKI_PROCESS_COMMAND(words)
 	local g = _G['ADDONS']['MONOGUSA']['MUTEKI'];
 	local acutil = require('acutil');
 	local cmd = table.remove(words,1);
@@ -33,34 +33,20 @@ function g.processCommand(words)
 		g.settings.enable = false;
 		frame:ShowWindow(0);
 		CHAT_SYSTEM("Muteki Attitude is disable");
-	elseif cmd == 'skin' then
-		cmd = table.remove(words,1);
-		local arg = table.remove(words,1);
-		
-		local gauge = GET_CHILD(frame, "gauge_"..cmd, "ui::CGauge");
-		gauge:SetTotalTime(20);
-		gauge:SetPoint(20, 20);
-		gauge:StopTimeProcess();
-		gauge:ShowWindow(1);
-		gauge:SetSkinName(arg);
-		CHAT_SYSTEM(arg);
-		
-	elseif cmd == 'color' then
-		cmd = table.remove(words,1);
-		local arg = table.remove(words,1);
-
-		local gauge = GET_CHILD(frame, "gauge_"..cmd, "ui::CGauge");
-		gauge:SetTotalTime(20);
-		gauge:SetPoint(20, 20);
-		gauge:StopTimeProcess();
-		gauge:ShowWindow(1);
-		gauge:SetColorTone(arg);
-		CHAT_SYSTEM(arg);
-	else
 	end
 
 	acutil.saveJSON(g.settingsFileLoc, g.settings);
 end
+
+function MUTEKI_CHECK_SHOW()
+  local g = _G['ADDONS']['MONOGUSA']['MUTEKI'];
+  if not g.settings.enable then
+		return;
+  else
+    g.frame:ShowWindow(1);
+	end
+end
+
 
 function MUTEKIATTITUDE_ON_INIT(addon, frame)
 	local g = _G['ADDONS']['MONOGUSA']['MUTEKI'];
@@ -72,7 +58,7 @@ function MUTEKIATTITUDE_ON_INIT(addon, frame)
 	g.invincible = false;
 	g.ausirine = false;
 
-	acutil.slashCommand("/muteki", g.processCommand)
+	acutil.slashCommand("/muteki", MUTEKI_PROCESS_COMMAND)
 
 	if not g.loaded then
 		local t, err = acutil.loadJSON(g.settingsFileLoc, g.settings);
@@ -88,6 +74,7 @@ function MUTEKIATTITUDE_ON_INIT(addon, frame)
 	g.addon:RegisterMsg('BUFF_UPDATE', 'MUTEKI_UPDATE_BUFF');
 	g.addon:RegisterMsg('BUFF_REMOVE', 'MUTEKI_UPDATE_BUFF');
 
+	--CHAT_SYSTEM('MUTEKI init');
 	MUTEKI_INIT_UI(frame);
 end
 
@@ -101,9 +88,8 @@ function MUTEKI_UPDATE_NOTIMEBUFF(msg, argNum)
 		return;
 	end
 	local frame = g.frame;
+  MUTEKI_CHECK_SHOW();
 	local gauge = GET_CHILD(frame, "gauge_"..argNum, "ui::CGauge");
-	local handle = session.GetMyHandle();
-	local buff = info.GetBuff(tonumber(handle), argNum);
 
 	if msg == "BUFF_ADD" or msg == "BUFF_UPDATE" then
 		gauge:SetTotalTime(20);
@@ -118,6 +104,7 @@ end
 function MUTEKI_UPDATE_AUSIRINE(msg, argNum)
 	local g = _G['ADDONS']['MONOGUSA']['MUTEKI'];
 	local frame = g.frame;
+  MUTEKI_CHECK_SHOW();
 	local gauge = GET_CHILD(frame, "gauge_"..argNum, "ui::CGauge");
 	local handle = session.GetMyHandle();
 	local buff = info.GetBuff(tonumber(handle), argNum);
@@ -141,9 +128,9 @@ end
 function MUTEKI_UPDATE_MELSTIS(msg, argNum)
 	local g = _G['ADDONS']['MONOGUSA']['MUTEKI'];
 	local frame = g.frame;
+  MUTEKI_CHECK_SHOW();
 	local gauge = GET_CHILD(frame, "gauge_229", "ui::CGauge");
 	local handle = session.GetMyHandle();
-	local buff = info.GetBuff(tonumber(handle), argNum);
 
 	if msg == "BUFF_ADD" or msg == "BUFF_UPDATE" then
 		g.melstis = true;
@@ -151,8 +138,8 @@ function MUTEKI_UPDATE_MELSTIS(msg, argNum)
 		gauge:SetColorTone("FFFF0000");
 	elseif msg == "BUFF_REMOVE" then
 		g.melstis = false;
-		curPoint = gauge:GetCurPoint();
-		maxPoint = gauge:GetMaxPoint();
+		local curPoint = gauge:GetCurPoint();
+		local maxPoint = gauge:GetMaxPoint();
 		gauge:SetColorTone("FFFFFFFF");
 		gauge:SetPoint(curPoint, maxPoint);
 		gauge:SetPointWithTime(maxPoint, maxPoint - curPoint, 1);
@@ -160,10 +147,6 @@ function MUTEKI_UPDATE_MELSTIS(msg, argNum)
 end
 
 function MUTEKI_UPDATE_BUFF(frame, msg, argStr, argNum)
-	local g = _G['ADDONS']['MONOGUSA']['MUTEKI'];
-
-	local handle = session.GetMyHandle();
-	local buff = info.GetBuff(tonumber(handle), argNum);
 
 	--SZ
 	if argNum == 94 or argNum == 1021 then
