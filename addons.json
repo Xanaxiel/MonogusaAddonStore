@@ -1,0 +1,16 @@
+[
+	{
+		"name" : "Muteki Attitude",
+		"file" : "mutekiattitude",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.1",
+		"releaseTag" : "mutekiattitude",
+		"unicode" : "⛄",
+		"description" : "Add-on that highlights buffs becoming invincible.",
+		"tags" : [
+			"ui",
+			"ausirine",
+			"buff",
+		]
+	},
+]
