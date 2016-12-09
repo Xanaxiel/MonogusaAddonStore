@@ -12,5 +12,20 @@
 			"ausirine",
 			"buff"
 		]
+	},
+	{
+		"name" : "IndunPlus",
+		"file" : "indunplus",
+		"extension" : "ipf",
+		"fileVersion" : "v1.1.0",
+		"releaseTag" : "indunplus",
+		"unicode" : "⛄",
+		"description" : "Add-on that displays the number of instance dungeons and world boss buff time for each character",
+		"tags" : [
+			"ui",
+			"world boss",
+			"instance dungeon",
+			"count"
+		]
 	}
 ]
