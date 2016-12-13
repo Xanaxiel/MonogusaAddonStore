@@ -39,5 +39,19 @@
 		"tags" : [
 			"market"
 		]
+	},
+	{
+		"name" : "Clover Finder",
+		"file" : "cloverfinder",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "cloverfinder",
+		"unicode" : "⛄",
+		"description" : "When bonus enemy found, this addon Inform by icon and chat for user and party member automatically.",
+		"tags" : [
+			"ui",
+			"bonus enemy",
+			"clover"
+		]
 	}
 ]
