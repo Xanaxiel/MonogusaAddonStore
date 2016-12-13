@@ -73,8 +73,8 @@ function MUTEKIATTITUDE_ON_INIT(addon, frame)
 	g.addon:RegisterMsg('BUFF_ADD', 'MUTEKI_UPDATE_BUFF');
 	g.addon:RegisterMsg('BUFF_UPDATE', 'MUTEKI_UPDATE_BUFF');
 	g.addon:RegisterMsg('BUFF_REMOVE', 'MUTEKI_UPDATE_BUFF');
+  g.addon:RegisterMsg("MON_ENTER_SCENE", "MUTEKI_ON_MON_ENTER_SCENE");
 
-	--CHAT_SYSTEM('MUTEKI init');
 	MUTEKI_INIT_UI(frame);
 end
 
@@ -164,3 +164,33 @@ function MUTEKI_UPDATE_BUFF(frame, msg, argStr, argNum)
 	end
 end
 
+function MUTEKI_ON_MON_ENTER_SCENE(frame, msg, str, handle)
+  local g = _G['ADDONS']['MONOGUSA']['MUTEKI'];
+
+  if not g.settings.enable then
+    return;
+  end
+
+  local actor = world.GetActor(handle);
+  if actor:GetObjType() == GT_MONSTER then
+    local monCls = GetClassByType("Monster", actor:GetType());
+
+    if monCls.ClassName == "pcskill_wood_ausrine2" or monCls.ClassName == "pcskill_wood_ausrine" then
+
+      local popup= ui.CreateNewFrame("hair_gacha_popup", "Ausirine_"..handle, 0);
+      popup:ShowWindow(1);
+      popup:EnableHitTest(0);
+      local bonusimg = GET_CHILD_RECURSIVELY(popup, "bonusimg");
+      local itembgimg = GET_CHILD_RECURSIVELY(popup, "itembgimg");
+      bonusimg:ShowWindow(0);
+      itembgimg:ShowWindow(0);
+      
+      local itemimg = GET_CHILD_RECURSIVELY(popup, "itemimg");
+      itemimg:SetImage("icon_cler_craveAusirine");
+      itemimg:SetColorTone("EEFFFFFF");
+
+     	FRAME_AUTO_POS_TO_OBJ(popup, handle, - popup:GetWidth() / 2, -50, 3, 1);
+    end
+  end
+
+end
