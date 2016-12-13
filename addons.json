@@ -3,7 +3,7 @@
 		"name" : "MutekiAttitude",
 		"file" : "mutekiattitude",
 		"extension" : "ipf",
-		"fileVersion" : "v1.0.1",
+		"fileVersion" : "v1.1.0",
 		"releaseTag" : "mutekiattitude",
 		"unicode" : "⛄",
 		"description" : "Add-on that highlights buffs becoming invincible.",
