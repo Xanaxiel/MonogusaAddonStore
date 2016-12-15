@@ -53,5 +53,19 @@
 			"bonus enemy",
 			"clover"
 		]
+	},
+	{
+		"name" : "Boss Spotter",
+		"file" : "bossspotter",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "bossspotter",
+		"unicode" : "⛄",
+		"description" : "This add-on will automatically report for party or guild where it was when you found the boss.",
+		"tags" : [
+			"ui",
+			"field boss",
+			"world boss"
+		]
 	}
 ]
