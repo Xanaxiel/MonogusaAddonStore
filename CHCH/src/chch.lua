@@ -6,7 +6,7 @@ _G['ADDONS']['MONOGUSA'][addonName] = _G['ADDONS']['MONOGUSA'][addonName] or {};
 
 local g = _G['ADDONS']['MONOGUSA'][addonName];
 
-CHAT_SYSTEM("CHCH is loaded");
+CHAT_SYSTEM("Channel Changer is loaded");
 
 function g.getCurrentChannel()
     local channel = session.loginInfo.GetChannel();
@@ -14,10 +14,8 @@ function g.getCurrentChannel()
 end
 
 function g.getNumberOfChannels()
-    local mapName = session.GetMapName();
-    local mapCls = GetClass("Map", mapName);
-    local zoneInsts = session.serverState.GetMap(mapCls.ClassID);
 
+	local zoneInsts = session.serverState.GetMap();
 	local cnt = zoneInsts:GetZoneInstCount();
 	local numberOfChannels = -1;
 
@@ -61,16 +59,16 @@ function CHCH_COMMAND(command)
     if #command > 0 then
         cmd = table.remove(command, 1);
     else
-		local msg = '';
-		msg = msg.. '/chch [number]{nl}';
-		msg = msg.. '数字で指定したチャンネルに移動する{nl}';
-		msg = msg.. '-----------{nl}';
-		msg = msg.. '/chch prev{nl}';
-		msg = msg.. '前のチャンネルに移動する（2chなら1ch、1chなら5chなど）{nl}';
-		msg = msg.. '-----------{nl}';
-		msg = msg.. '/chch next{nl}';
-		msg = msg.. '次のチャンネルに移動する（1chなら2ch、5chなら1chなど）{nl}';
-		return ui.MsgBox(msg,"","Nope")
+      local msg = '';
+      msg = msg.. '/chch [number]{nl}';
+      msg = msg.. 'move to [number] channel{nl}';
+      msg = msg.. '-----------{nl}';
+      msg = msg.. '/chch prev{nl}';
+      msg = msg.. 'move to current channel - 1{nl}';
+      msg = msg.. '-----------{nl}';
+      msg = msg.. '/chch next{nl}';
+      msg = msg.. 'move to current channel + 1{nl}';
+      return ui.MsgBox(msg,"","Nope")
     end
 
     if cmd == "prev" then
@@ -110,17 +108,14 @@ end
 function CHCH_CHANGE_CHANNEL(channel)
 	local g = _G['ADDONS']['MONOGUSA']['CHCH'];
 
-    local mapName = session.GetMapName();
-    local mapCls = GetClass("Map", mapName);
-    local zoneInsts = session.serverState.GetMap(mapCls.ClassID);
+	local zoneInsts = session.serverState.GetMap();
+	if zoneInsts == nil or zoneInsts.pcCount == -1 then
+		ui.SysMsg(ClMsg("ChannelIsClosed"));
+		return;
+	end
 
-    CHAT_SYSTEM("change to channel"..(channel+1));
-
-    if zoneInsts.pcCount == -1 then
-        CHAT_SYSTEM("[CHCH] Invalid Channel");
-        return;
-    end
-
-    app.ChangeChannel(channel);
+  CHAT_SYSTEM("change to channel"..(channel+1));
+	--GAME_MOVE_CHANNEL(channel);
+	RUN_GAMEEXIT_TIMER("Channel", channel);
 end
 

@@ -67,5 +67,18 @@
 			"field boss",
 			"world boss"
 		]
+	},
+	{
+		"name" : "Channel Changer",
+		"file" : "chch",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "chch",
+		"unicode" : "⛄",
+		"description" : "Add-on that allows you to change channels from chat commands.",
+		"tags" : [
+			"channel",
+			"chat command"
+		]
 	}
 ]
