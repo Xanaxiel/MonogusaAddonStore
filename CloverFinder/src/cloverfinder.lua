@@ -176,6 +176,16 @@ function CLOVER_CHECK_BUFF_LIST()
         ["english"]="Red"
       },
       checkFn=nil
+    },
+    {
+      ["id"] = 5087,
+      ["icon"]="icon_fieldboss",
+      ["bg"]="gacha_03",
+      ["color"]={
+        ["japanese"]="エリート",
+        ["english"]="Elite"
+      },
+      checkFn=nil
     }
   };
 
@@ -185,7 +195,6 @@ end
 function CLOVER_CHECK_MON(handle)
   local g = _G['ADDONS']['MONOGUSA']['CLOVERFINDER'];
   local actor = world.GetActor(handle);
-
   if actor == nil then
     g.check[tostring(handle)] = nil;
     return;
@@ -242,6 +251,7 @@ function CLOVER_ON_MON_ENTER_SCENE(frame, msg, str, handle)
   g.check[tostring(handle)] = os.clock();
 
   local actor = world.GetActor(handle);
+
   if actor:GetObjType() == GT_MONSTER then
     --シーン直後に取得してもとれないので、ディレイをかけて実行する
     ReserveScript(string.format("CLOVER_CHECK_MON(%d or 0)", handle), 0.8);
