@@ -80,5 +80,17 @@
 			"channel",
 			"chat command"
 		]
+	},
+	{
+		"name" : "Light FriendList",
+		"file" : "lightfriendlist",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "lightfriendlist",
+		"unicode" : "⛄",
+		"description" : "Delete the bugg Friend group function and lighten the friend list",
+		"tags" : [
+			"friend"
+		]
 	}
 ]
