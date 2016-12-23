@@ -11,40 +11,141 @@ local acutil = require('acutil');
 g.settingsFileLoc = "../addons/indunplus/settings.json";
 
 if not g.loaded then
-	g.isDragging = false;
-	g.color = {
-		normal = "FFFFFFFF",
-		nearComplete = "FF00FFFF",
-		complete = "FF00FF00",
-	};
-	g.settings = {
-		--表示非表示
-		show = false;
-		--X座標、Y座標
-		xPosition = 500,
-		yPosition = 500,
-		--リセット時刻
-		resetHour = 6,
-		--フォントのサイズ
-		fontSize = 16,
-		--1列に表示するキャラ数
-		rowMax = 5,
-		records = {},
-	};
+  g.isDragging = false;
+  g.removingItem = nil;
+  g.records = {};
+  g.color = {
+    normal = "FFFFFFFF",
+    nearComplete = "FF00FFFF",
+    complete = "FF00FF00",
+  };
 
-	g.bossDebuffId = 80001;
+  g.settings = {
+    version = 1.2;
+    --表示非表示
+    show = true;
+    --X座標、Y座標
+    xPosition = 500,
+    yPosition = 500,
+    --リセット時刻
+    resetHour = 6,
+    --1列に表示するキャラ数
+    rowMax = 5,
+  };
+
+  g.bossDebuffId = 80001;
 end
 
-function INDUNPLUS_GET_TYPES()
-	local clslist, cnt = GetClassList("Indun");
+
+function INDUNPLUS_RELOAD()
+  local t, err = acutil.loadJSON(g.settingsFileLoc, g.settings);
+  if err then
+    CHAT_SYSTEM('no save file');
+  else
+    CHAT_SYSTEM('indunplus savedata is loaded');
+    g.settings = t;
+  end
+
+  INDUNPLUS_SHOW_PLAYCOUNT();
+end
+
+
+function INDUNPLUS_GET_MYSERIOUS_BOXS()
+  return {
+    --{ id=641233, chance=false, unstable=true},
+    { id=642809, chance=false, unstable=false},
+    { id=642811, chance=true, unstable=false},
+    { id=642810, chance=false, unstable=true},
+    { id=642812, chance=true, unstable=true},
+  }
+end
+
+function INDUNPLUS_GET_BOX_BYID(id)
+  local boxs = INDUNPLUS_GET_MYSERIOUS_BOXS();
+
+  for i, box in ipairs(boxs) do
+    if box.id == id then
+      local itemCls = GetClassByType("Item", box.id);
+      return box, itemCls;
+    end
+  end
+
+  return nil, nil;
+end
+
+
+function INDUNPLUS_IS_BOX_EXIST()
+  local boxs = INDUNPLUS_GET_MYSERIOUS_BOXS();
+
+  for i, box in ipairs(boxs) do
+    local invItem= session.GetInvItemByType(box.id);
+
+    if invItem ~= nil then
+      if invItem.count > 0 and g.removingItem ~= box.id then
+        local itemCls = GetClassByType("Item", box.id);
+        return box, itemCls;
+      end
+    end
+  end
+
+  return nil, nil;
+end
+
+function INDUNPLUS_GET_BOXCD(box)
+  local result = 0;
+
+  if box == nil then
+    return 0;
+  end
+
+  local invItem= session.GetInvItemByType(box.id);
+
+  if box.unstable then
+  else
+    --神秘的なキューブ
+    local cdtime = item.GetCoolDown(box.id);
+
+    if cdtime > 0 then
+      result = os.time() + math.floor(cdtime / 1000);
+    end
+  end
+
+  return result;
+end
+
+function INDUNPLUS_CHECK_BOX()
+  local box = INDUNPLUS_IS_BOX_EXIST();
+  local time = INDUNPLUS_GET_BOXCD(box);
+
+  INDUNPLUS_SAVE_BOXTIME(box, time);
+end
+
+function INDUNPLUS_SAVE_BOXTIME(box, time)
+  local mySession = session.GetMySession();
+  local cid = mySession:GetCID();
+  local boxId = nil;
+
+  if box ~=nil then
+    boxId = box.id;
+  end
+
+  g.records[cid]["boxId"] = boxId;
+  g.records[cid]["boxTime"] = time;
+
+  local fileName = string.format("../addons/indunplus/%s.json", cid);
+  acutil.saveJSON(fileName, g.records[cid]);
+end
+
+function INDUNPLUS_GET_INDUNS()
+  local clslist, cnt = GetClassList("Indun");
   local temp = {};
   local result = {};
 
   local categoryCount = 1;
-	for i = 0 , cnt - 1 do
- 		local cls = GetClassByIndexFromList(clslist, i);
+  for i = 0 , cnt - 1 do
+    local cls = GetClassByIndexFromList(clslist, i);
     local idx = temp[tostring(cls.PlayPerResetType)];
-    
+
     if idx == nil and cls.Category ~= 'None' then
       table.insert(result,
         categoryCount,
@@ -64,138 +165,265 @@ function INDUNPLUS_GET_TYPES()
   return result;
 end
 
+function INDUNPLUS_GET_PLAY_COUNT(indun)
+  local etcObj = GetMyEtcObject();
+  local etcType = "InDunCountType_"..indun.type;
+  local count = etcObj[etcType];
 
-function g.processCommand(words)
-	INDUNPLUS_SHOW_PLAYCOUNT();
-	INDUNPLUS_TOGGLE_FRAME();
+  return count;
 end
 
-function g.getPlayCount(type)
-	local etcObj = GetMyEtcObject();
-	local etcType = "InDunCountType_"..type;
-	local count = etcObj[etcType];
-
-	return count;
-end
-
-function g.getMaxPlayCount(id)
-	local cls = GetClassByType("Indun", id);
-	local maxPlayCnt = cls.PlayPerReset;
-	if true == session.loginInfo.IsPremiumState(ITEM_TOKEN) then 
-		maxPlayCnt = maxPlayCnt + cls.PlayPerReset_Token;
-	end
-
-	return maxPlayCnt;
-end
-
-function g.getResetTime()
-	local currentDate = os.date("*t");
-
-	local resetDate = os.date("*t");
-	resetDate.hour = g.settings.resetHour;
-	resetDate.min = 0;
-	resetDate.sec = 0;
-	
-	local resetTime = os.time(resetDate);
-	
-	if currentDate.hour < g.settings.resetHour then
-		resetTime = resetTime - 24*3600;
-	end
-
-	return resetTime;
-end
-
-
-function g.getBossDebuff()
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	local result = false;
-	
-end
-
-function g.createCharaNameText(frame, cid, record, fontSize, x, y, width, height)
-	local charaText = frame:CreateOrGetControl("richtext", "record"..cid, x, y, width, height)
-	tolua.cast(charaText, "ui::CRichText");
-  local text = "";
-  
-  if record.level == nil then
-    text = string.format("{s%d}%s{/}", fontSize, record.name);
-  else
-    text = string.format("{s%d}Lv%d %s{/}", fontSize, record.level, record.name);
+function INDUNPLUS_GET_MAX_PLAY_COUNT(indun)
+  local cls = GetClassByType("Indun", indun.id);
+  local maxPlayCnt = cls.PlayPerReset;
+  if true == session.loginInfo.IsPremiumState(ITEM_TOKEN) then 
+    maxPlayCnt = maxPlayCnt + cls.PlayPerReset_Token;
   end
 
-	charaText:SetText(text);
-	charaText:ShowWindow(1);
+  return maxPlayCnt;
 end
 
-function g.createFBTimeText(frame, cid, record, fontSize, x, y, width, height)
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
+function INDUNPLUS_GET_RESETTIME()
+  local currentDate = os.date("*t");
 
-	local color = "FFFFFF";
-	if record.fbDebuffTime - 600 < os.time()  then
-		color = "00FF00";
-	elseif record.fbDebuffTime - 3600 < os.time() then
-		color = "FFFF00";
-	end
+  local resetDate = os.date("*t");
+  resetDate.hour = g.settings.resetHour;
+  resetDate.min = 0;
+  resetDate.sec = 0;
 
-	local fbLabelText = frame:CreateOrGetControl("richtext", "fbLabel"..cid, x, y, width, height)
-	local text = string.format("{#%s}{s%d}%s{/}{/}", color, fontSize, "FBデバフ");
-	tolua.cast(fbLabelText, "ui::CRichText");
-	fbLabelText:SetText(text);
-	fbLabelText:ShowWindow(1);
+  local resetTime = os.time(resetDate);
 
-	local fbText = frame:CreateOrGetControl("richtext", "fbDebuff"..cid, x, y, width, height)
-	local fbDate = os.date("*t", record.fbDebuffTime);
-	tolua.cast(fbText, "ui::CRichText");
-	fbText:SetText(string.format("{#%s}{s%d}%02d:%02d:%02d{/}{/}",color, fontSize, fbDate.hour, fbDate.min, fbDate.sec));
-	fbText:SetGravity(1,0);
-	fbText:ShowWindow(1);
+  if currentDate.hour < g.settings.resetHour then
+    resetTime = resetTime - 24*3600;
+  end
+
+  return resetTime;
+end
+
+function INDUNPLUS_CREATE_CHARALABEL(parent, cid, record, fontSize, x, y, width, height)
+  local charaText = parent:CreateOrGetControl("richtext", "record"..cid, x, y, width, height)
+  tolua.cast(charaText, "ui::CRichText");
+  local text = "";
+
+  local color = "FFFFFF"
+  if cid == session.GetMySession():GetCID() then
+    color = "FFFF00";
+  end
+
+  if record.level == nil then
+    text = string.format("{@st48}{#%s}{s%d}%s{/}{/}{/}", color, fontSize, record.name);
+  else
+    text = string.format("{@st48}{#%s}{s%d}Lv%d %s{/}{/}{/}", color, fontSize, record.level, record.name);
+  end
+
+  charaText:SetText(text);
+
+  if record.money ~= nil then
+    local silverText = parent:CreateOrGetControl("richtext", "silver_"..cid, x, y, width, height)
+    tolua.cast(silverText, "ui::CRichText");
+    silverText:SetText("{@st48}{#AAAAAA}"..GetCommaedText(record.money).."s{/}{/}");
+    silverText:SetGravity(ui.RIGHT, ui.TOP);
+  end
+
+end
+
+function INDUNPLUS_CREATE_FBTIME(parent, cid, record, fontSize, x, y, width, height)
+  local fbLabelText = parent:CreateOrGetControl("richtext", "fbLabel"..cid, x, y, width, height)
+  local fbText = parent:CreateOrGetControl("richtext", "fbDebuff"..cid, x, y, width, height)
+
+  local color = "FFFFFF";
+  if nil ~= record.fbDebuffTime or record.fbDebuffTime <= os.time() then
+    fbLabelText:ShowWindow(0);
+    fbText:ShowWindow(0);
+    return false;
+  elseif record.fbDebuffTime - 600 < os.time()  then
+    color = "00FF00";
+  elseif record.fbDebuffTime - 3600 < os.time() then
+    color = "FFFF00";
+  end
+
+  fbLabelText:ShowWindow(1);
+  fbText:ShowWindow(1);
+
+  local text = string.format("{@st48}{#%s}{s%d}%s{/}{/}{/}", color, fontSize, "BossDebuff");
+  tolua.cast(fbLabelText, "ui::CRichText");
+  fbLabelText:SetText(text);
+
+  local fbDate = os.date("*t", record.fbDebuffTime);
+  tolua.cast(fbText, "ui::CRichText");
+  fbText:SetText(string.format("{@st48}{#%s}{s%d}%02d:%02d:%02d{/}{/}{/}",color, fontSize, fbDate.hour, fbDate.min, fbDate.sec));
+  fbText:SetGravity(ui.RIGHT, ui.TOP);
+
+  return true;
 end
 
 
+function INDUNPLUS_CREATE_BOXTIME(parent, cid, record, fontSize, x, y, width, height)
+  local box, boxCls = nil, nil;
 
+  if cid == session.GetMySession():GetCID() then
+    box, boxCls = INDUNPLUS_IS_BOX_EXIST();
+  else
+    box, boxCls = INDUNPLUS_GET_BOX_BYID(record.boxId);
+  end
+
+  local boxLabel = parent:CreateOrGetControl("richtext", "boxLabel"..cid, x, y, width, height);
+  local boxTime = parent:CreateOrGetControl("richtext", "boxTime"..cid, x, y, width, height)
+  tolua.cast(boxLabel, "ui::CRichText");
+  tolua.cast(boxTime, "ui::CRichText");
+
+  if box == nil then
+    boxLabel:ShowWindow(0);
+    boxTime:ShowWindow(0);
+    return false;
+  else
+    boxLabel:ShowWindow(1);
+    boxTime:ShowWindow(1);
+  end
+
+  boxTime:SetGravity(ui.RIGHT, ui.TOP);
+
+  if box.unstable then
+    local color = "FF00FF";
+    local text = string.format("{@st48}{#%s}{s%d}%s{/}{/}{/}", color, fontSize, boxCls.Name);
+    boxLabel:SetText(text);
+  else
+    local color = "FFFFFF"
+
+    if record.boxTime < os.time()  then
+      color = "FFFF00";
+    end
+
+    local text = string.format("{@st48}{#%s}{s%d}%s{/}{/}{/}", color, fontSize, boxCls.Name);
+    boxLabel:SetText(text);
+
+    if record.boxTime == 0 or record.boxTime < os.time() then
+      boxTime:SetText(string.format("{@st48}{#%s}{s%d}{/}Ready{/}{/}",color, fontSize));
+    else
+      local date = os.date("*t", record.boxTime);
+      boxTime:SetText(string.format("{@st48}{#%s}{s%d}%02d/%02d %02d:%02d{/}{/}{/}",color, fontSize, date.month, date.day, date.hour, date.min));
+    end
+
+  end
+  return true;
+end
+
+function INDUNPLUS_LOAD()
+  --総合設定の読み取り
+  if not g.loaded then
+    local t, err = acutil.loadJSON(g.settingsFileLoc);
+    if err then
+      CHAT_SYSTEM('no save file');
+    else
+      if t.version ~= nil and t.version < 1.2 then
+        CHAT_SYSTEM('[indunplus] savedata is loaded');
+        g.settings = t;
+      else
+        CHAT_SYSTEM('[indunplus] delete old version save data');
+        acutil.saveJSON(g.settingsFileLoc, g.settings);
+      end
+    end
+    g.loaded = true;
+  end
+
+  --キャラごとのデータを読み込み
+  local accountInfo = session.barrack.GetMyAccount();
+  local cnt = accountInfo:GetPCCount();
+  for i = 0 , cnt - 1 do
+    local pcInfo = accountInfo:GetPCByIndex(i);
+    local cid = tostring(pcInfo:GetCID());
+    local fileName = string.format("../addons/indunplus/%s.json", cid);
+    local t, err = acutil.loadJSON(fileName);
+    if not err then
+      g.records[cid] = t;
+    end
+  end
+end
+
+
+function INDUNPLUS_CREATE_INDUNLINE(parent, cid, record, indun, fontSize, x, y, width, height)
+
+  local counts = record.counts[indun.type];
+
+  if counts == nil then
+    counts = {
+      playCount = 0,
+      maxPlayCount = INDUNPLUS_GET_MAX_PLAY_COUNT(indun),
+    };
+  end
+
+  local label = indun.label;
+  local type = indun.type;
+  local color = "FFFFFF";
+
+  if record.level ~= nil and indun.level > record.level then
+    color = "444444";
+  elseif counts.playCount >= counts.maxPlayCount then
+    color = "00FF00";
+  elseif counts.playCount > 0 then
+    color = "FFFF00";
+  end
+
+  local labelText = parent:CreateOrGetControl("richtext", "label"..cid.."_"..type, 20, y, width / 2, 15);
+  tolua.cast(labelText, "ui::CRichText");
+  labelText:SetText(string.format("{@st48}{#%s}{s%d}%s{/}{/}{/}", color, fontSize ,label));
+
+  local countText = parent:CreateOrGetControl("richtext", "count"..cid.."_"..type, 0, y, width / 2, 15);
+  tolua.cast(countText, "ui::CRichText");
+  countText:SetText(string.format("{@st48}{#%s}{s%d}%d/%d{/}{/}{/}", color, fontSize, counts.playCount, counts.maxPlayCount));
+  countText:SetGravity(ui.RIGHT, ui.TOP);
+end
 
 function INDUNPLUS_TOGGLE_FRAME()
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	local acutil = require('acutil');
-	ui.ToggleFrame("indunplus");
+  if g.frame:IsVisible() == 0 then
+    g.frame:ShowWindow(1);
+    g.settings.show = true;
+  else
+    g.frame:ShowWindow(0);
+    g.settings.show = false;
+  end
 
-	g.settings.show = not g.settings.show;
-	acutil.saveJSON(g.settingsFileLoc, g.settings);
+  acutil.saveJSON(g.settingsFileLoc, g.settings);
 end
 
 function INDUNPLUS_SHOW_PLAYCOUNT()
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	local acutil = require('acutil');
-	local records = g.settings.records;
-	
-	local frame = ui.GetFrame("indunplus");
-	local fontSize = g.settings.fontSize or 16
-  local types = INDUNPLUS_GET_TYPES();
-  local lineNum = #types + 2;
+  local records = g.records;
 
-	local topMargin = 30;
-	local bottomMargin = 15;
-	local width = 0;
-	local height = 0;
-	local cnt = 0;
-	local rowMax = g.settings.rowMax or 5;
-	
-	local row = 0;
-	local col = 0;
-	
-	local pageX = 0;
-	local pageY = 15;
-	local pageWidth = 250;
-	local pageHeight = fontSize * lineNum + 10;
-  
+  local frame = ui.GetFrame("indunplus");
+  local fontSize = 16
+  local lineHeight = fontSize + 6;
+  local induns = INDUNPLUS_GET_INDUNS();
+  local lineNum = #induns + 3;
+
+  local topMargin,bottomMargin = 30, 20;
+  local width, height = 0, 0;
+  local cnt = 0;
+  local rowMax = g.settings.rowMax or 5;
+
+  local row = 0;
+  local col = 0;
+
+  local pageX = 0;
+  local pageY = 15;
+  local pageWidth = 250;
+  local pageHeight = fontSize * lineNum + 15;
+
   local title = frame:CreateOrGetControl("richtext", "title", 10, 12, pageWidth, fontSize);
-  local closeButton = frame:CreateOrGetControl("button", "close", 0, 0, 25, 25);
   local minButton = frame:CreateOrGetControl("button", "minimize", 0, 0, 25, 25);
 
+  if g.settings.minimize then
+    --最小化時
+    minButton:Move(0, 0);
+    minButton:SetOffset(180 -30, 5);
+    frame:Resize(180, 35);
+    frame:Move(0, 0);
+    frame:SetOffset(g.settings.xPosition, g.settings.yPosition);
+    return;
+  end
 
-  if not g.settings.minimize then
-    for cid, record in pairs(records) do
-
+  for cid, record in pairs(records) do
+    local pcPCInfo = session.barrack.GetMyAccount():GetByStrCID(cid);
+    if pcPCInfo ~= nil then
       if cnt > 0 and cnt % rowMax == 0 then
         row = 0;
         height = 0;
@@ -208,46 +436,34 @@ function INDUNPLUS_SHOW_PLAYCOUNT()
       page:SetSkinName('None');
       page:EnableHitTest(0);
 
+      local job = page:CreateOrGetControl("picture", "job_"..cid, 100, lineHeight/2, 128, 128);
+      tolua.cast(job, "ui::CPicture");
+      job:SetGravity(ui.LEFT, ui.TOP);
+      job:SetEnableStretch(1);
+      job:SetColorTone("AAFFFFFF");
+      if record.job ~= nil then
+        job:SetImage(GET_JOB_ICON(record.job));
+      end
+
       local y = 5;
-      g.createCharaNameText(page, cid, record, fontSize, 12, y, pageWidth, 20);
+      INDUNPLUS_CREATE_CHARALABEL(page, cid, record, fontSize, 12, y, pageWidth, lineHeight);
+      y = y + 2;
 
-      if nil ~= record.fbDebuffTime and  record.fbDebuffTime > os.time() then
-        y = y + fontSize;
-        g.createFBTimeText(page, cid, record, fontSize, 20, y, pageWidth, 20)
+      y = y + fontSize;
+      if not INDUNPLUS_CREATE_FBTIME(page, cid, record, fontSize, 20, y, pageWidth, lineHeight) then
+        y = y - fontSize;
       end
-      
-      for i, indun in ipairs(types) do
-        y = y + fontSize;
-        local counts = record.counts[indun.type];
-        
-        if counts == nil then
-          counts = {
-            playCount = 0,
-            maxPlayCount = g.getMaxPlayCount(indun.id),
-          };
-        end
 
-        local label = indun.label;
-        local type = indun.type;
-        local color = "FFFFFF";
-        if record.level ~= nil and indun.level > record.level then
-          color = "444444";
-        elseif counts.playCount >= counts.maxPlayCount then
-          color = "00FF00";
-        elseif counts.playCount > 0 then
-          color = "FFFF00";
-        end
-
-        local labelText = page:CreateOrGetControl("richtext", "label"..cid.."_"..type, 20, y, pageWidth/2, 15);
-        tolua.cast(labelText, "ui::CRichText");
-        labelText:SetText( string.format("{#%s}{s%d}%s{/}{/}", color, fontSize ,label));
-
-        local countText = page:CreateOrGetControl("richtext", "count"..cid.."_"..type, 0, y, pageWidth/2, 15);
-        tolua.cast(countText, "ui::CRichText");
-        countText:SetText( string.format("{#%s}{s%d}%d/%d{/}{/}", color, fontSize, counts.playCount, counts.maxPlayCount));
-        countText:SetGravity(1,0);
+      y = y + fontSize;
+      if not INDUNPLUS_CREATE_BOXTIME(page, cid, record, fontSize, 20, y, pageWidth, lineHeight) then
+        y = y - fontSize;
       end
-      
+
+      for i, indun in ipairs(induns) do
+        y = y + fontSize;
+        INDUNPLUS_CREATE_INDUNLINE(page, cid, record, indun, fontSize, 20, y, pageWidth, lineHeight)
+      end
+
       page:Resize(pageWidth, pageHeight);
 
       if cnt < rowMax then
@@ -259,220 +475,236 @@ function INDUNPLUS_SHOW_PLAYCOUNT()
       cnt = cnt + 1;
       row = row + 1;
     end
-    closeButton:Move(0, 0);
-    minButton:Move(0, 0);
-    closeButton:SetOffset(pageWidth * (col + 1) -25, 10);
-    minButton:SetOffset(pageWidth * (col + 1) -50, 10);
-    frame:Resize(pageWidth * (col + 1) + 10, height);
-  else
-    closeButton:Move(0, 0);
-    minButton:Move(0, 0);
-    closeButton:SetOffset(200 -25, 5);
-    minButton:SetOffset(200 -50, 5);
-    frame:Resize(200, 35);
   end
 
-	frame:Move(0, 0);
-	frame:SetOffset(g.settings.xPosition, g.settings.yPosition);
+  minButton:Move(0, 0);
+  minButton:SetOffset(pageWidth * (col + 1) -30, 10);
+  frame:Resize(pageWidth * (col + 1) + 10, height);
+  frame:Move(0, 0);
+  frame:SetOffset(g.settings.xPosition, g.settings.yPosition);
 end
 
 function INDUNPLUS_MINIMIZE_FRAME()
-	local frame = ui.GetFrame("indunplus");
-	g.settings.xPosition = frame:GetX();
-	g.settings.yPosition = frame:GetY();
-	g.settings.minimize = not g.settings.minimize;
+  local frame = g.frame;
+  g.settings.xPosition = frame:GetX();
+  g.settings.yPosition = frame:GetY();
+  g.settings.minimize = not g.settings.minimize;
 
- 	acutil.saveJSON(g.settingsFileLoc, g.settings);
+  acutil.saveJSON(g.settingsFileLoc, g.settings);
   INDUNPLUS_SHOW_PLAYCOUNT();
 end
 
 function INDUNPLUS_ON_INIT(addon, frame)
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
+  g.addon = addon;
+  g.frame = frame;
+  frame:ShowWindow(0);
+  frame:EnableHitTest(1);
+  frame:SetEventScript(ui.RBUTTONDOWN, "INDUNPLUS_CONTEXT_MENU");
 
-	g.addon = addon;
-	g.frame = frame;
-	frame:ShowWindow(0);
+  frame:SetEventScript(ui.LBUTTONDOWN, "INDUNPLUS_START_DRAG");
+  frame:SetEventScript(ui.LBUTTONUP, "INDUNPLUS_END_DRAG");
 
-	frame:EnableHitTest(1);
-	frame:SetEventScript(ui.RBUTTONDOWN, "INDUNPLUS_CONTEXT_MENU");
+  addon:RegisterMsg('SHOT_START', 'INDUNPLUS_ON_ITEM_CHANGE_COUNT');
+  addon:RegisterMsg('INV_ITEM_ADD', 'INDUNPLUS_ON_ITEM_CHANGE_COUNT');
+  addon:RegisterMsg('INV_ITEM_REMOVE', 'INDUNPLUS_ON_ITEM_CHANGE_COUNT');
+  addon:RegisterMsg('INV_ITEM_CHANGE_COUNT', 'INDUNPLUS_ON_ITEM_CHANGE_COUNT');
 
-	frame:SetEventScript(ui.LBUTTONDOWN, "INDUNPLUS_START_DRAG");
-	frame:SetEventScript(ui.LBUTTONUP, "INDUNPLUS_END_DRAG");
-	g.addon:RegisterMsg("GAME_START_3SEC", "INDUNPLUS_3SEC");
-	g.addon:RegisterMsg('BUFF_ADD', 'INDUNPLUS_UPDATE_BUFF');
-	g.addon:RegisterMsg('BUFF_REMOVE', 'INDUNPLUS_UPDATE_BUFF');
+  addon:RegisterMsg("GAME_START_3SEC", "INDUNPLUS_3SEC");
+  addon:RegisterMsg('BUFF_ADD', 'INDUNPLUS_UPDATE_BUFF');
+  addon:RegisterMsg('BUFF_REMOVE', 'INDUNPLUS_UPDATE_BUFF');
 
   local title = frame:CreateOrGetControl("richtext", "title", 10, 12, 200, 16);
   title:EnableHitTest(0);
   tolua.cast(title, "ui::CRichText");
-  title:SetText("IndunPlus /idp");
-  
-  local closeButton = frame:CreateOrGetControl("button", "close", 0, 0, 25, 25);
-  closeButton:SetEventScript(ui.LBUTTONDOWN, "INDUNPLUS_TOGGLE_FRAME");
-  closeButton:SetText("X");
+  title:SetText("{@st48}IndunPlus /idp{/}");
 
   local minButton = frame:CreateOrGetControl("button", "minimize", 0, 0, 25, 25);
   minButton:SetEventScript(ui.LBUTTONDOWN, "INDUNPLUS_MINIMIZE_FRAME");
   minButton:SetText("_");
 end
 
-function INDUNPLUS_CONTEXT_MENU()
-	local context = ui.CreateContextMenu("INDUNPLUS_RBTN", "IndunPlus", 0, 0, 300, 100);
-	ui.AddContextMenuItem(context, "Hide (/idp)", "INDUNPLUS_TOGGLE_FRAME()");
+function INDUNPLUS_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
+  local context = ui.CreateContextMenu("INDUNPLUS_RBTN", "IndunPlus", 0, 0, 300, 100);
+  ui.AddContextMenuItem(context, "Hide (/idp)", "INDUNPLUS_TOGGLE_FRAME()");
   ui.AddContextMenuItem(context, "Toggle Minimize", "INDUNPLUS_MINIMIZE_FRAME()");
-	context:Resize(300, context:GetHeight());
-	ui.OpenContextMenu(context);
+
+  local subContextRowNum = ui.CreateContextMenu("SUBCONTEXT_ROWNUM", "", 0, 0, 0, 0);
+  for i = 1, 5 do
+    ui.AddContextMenuItem(subContextRowNum, ""..i , string.format("INDUNPLUS_CHANGE_ROWNUM(%d)", i));
+  end
+
+  ui.AddContextMenuItem(context, "Row Num {img white_right_arrow 18 18}", "", nil, 0, 1, subContextRowNum);
+
+  context:Resize(300, context:GetHeight());
+  ui.OpenContextMenu(context);
+end
+
+function INDUNPLUS_CHANGE_ROWNUM(num)
+  g.settings.rowMax = num;
+  acutil.saveJSON(g.settingsFileLoc, g.settings);
+  INDUNPLUS_SHOW_PLAYCOUNT();
 end
 
 function INDUNPLUS_UPDATE_BUFF(frame, msg, argStr, argNum)
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-
-	if argNum == g.bossDebuffId then
-		if msg == "BUFF_ADD" then
-			INDUNPLUS_CHECK_BUFF();
-			INDUNPLUS_SHOW_PLAYCOUNT();
-		elseif msg == "BUFF_REMOVE" then
-			INDUNPLUS_SAVE_FBBOSSDEBUFF(0);
-			INDUNPLUS_SHOW_PLAYCOUNT();
-		end
-	end
+  if argNum == g.bossDebuffId then
+    if msg == "BUFF_ADD" then
+      INDUNPLUS_CHECK_BUFF();
+      INDUNPLUS_SHOW_PLAYCOUNT();
+    elseif msg == "BUFF_REMOVE" then
+      INDUNPLUS_SAVE_FBBOSSDEBUFF(0);
+      INDUNPLUS_SHOW_PLAYCOUNT();
+    end
+  end
 end
 
 function INDUNPLUS_SAVE_FBBOSSDEBUFF(fbTime)
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	local acutil = require('acutil');
+  local mySession = session.GetMySession();
+  local cid = mySession:GetCID();
 
-	local mySession = session.GetMySession();
-	local cid = mySession:GetCID();
-
-	g.settings.records[cid]["fbDebuffTime"] = fbTime;
-	acutil.saveJSON(g.settingsFileLoc, g.settings);
+  g.records[cid]["fbDebuffTime"] = fbTime;
+  local fileName = string.format("../addons/indunplus/%s.json", cid);
+  acutil.saveJSON(fileName, g.records[cid]);
 end
 
 function INDUNPLUS_CHECK_BUFF()
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	local acutil = require('acutil');
+  local fbDebuff = false;
+  local fbTime = 0;
 
-	local fbDebuff = false;
-	local fbTime = 0;
+  local handle = session.GetMyHandle();
+  local buffCount = info.GetBuffCount(handle);
 
-	local handle = session.GetMyHandle();
-	local buffCount = info.GetBuffCount(handle);
-	
-	for i = 0, buffCount - 1 do
-		local buff = info.GetBuffIndexed(handle, i);
-		
-		if buff.buffID == g.bossDebuffId then
-			fbDebuff = true;
-			fbTime = os.time() + math.floor(buff.time / 1000);
-		end
-	end
-	
-	INDUNPLUS_SAVE_FBBOSSDEBUFF(fbTime);
+  for i = 0, buffCount - 1 do
+    local buff = info.GetBuffIndexed(handle, i);
+
+    if buff.buffID == g.bossDebuffId then
+      fbDebuff = true;
+      fbTime = os.time() + math.floor(buff.time / 1000);
+    end
+  end
+
+  INDUNPLUS_SAVE_FBBOSSDEBUFF(fbTime);
 end
 
 function INDUNPLUS_START_DRAG(addon, frame)
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	g.isDragging = true;
+  g.isDragging = true;
 end
 
 function INDUNPLUS_END_DRAG(addon, frame)
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	g.isDragging = false;
-
-	local frame = ui.GetFrame("indunplus");
-	g.settings.xPosition = frame:GetX();
-	g.settings.yPosition = frame:GetY();
-	acutil.saveJSON(g.settingsFileLoc, g.settings);
+  g.isDragging = false;
+  g.settings.xPosition = g.frame:GetX();
+  g.settings.yPosition = g.frame:GetY();
+  acutil.saveJSON(g.settingsFileLoc, g.settings);
 end
 
 
 function INDUNPLUS_3SEC()
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	local acutil = require('acutil');
+  acutil.slashCommand("/idp", INDUNPLUS_TOGGLE_FRAME);
+  INDUNPLUS_LOAD();
 
-	acutil.slashCommand("/idp", g.processCommand);
+  local frame = g.frame;
 
-	if not g.loaded then
-		local t, err = acutil.loadJSON(g.settingsFileLoc, g.settings);
-		if err then
-			CHAT_SYSTEM('no save file');
-		else
-			CHAT_SYSTEM('indunplus savedata is loaded');
-			g.settings = t;
-		end
-		g.loaded = true;
-	end
+  INDUNPLUS_SAVE_TIME();
+  INDUNPLUS_SHOW_PLAYCOUNT();
 
-	local frame = ui.GetFrame("indunplus");
-
-	INDUNPLUS_SAVE_TIME();
-	INDUNPLUS_SHOW_PLAYCOUNT();
-
-	if frame ~= nil and not g.isDragging then
-		if g.settings.show then
-			frame:ShowWindow(1);
-		else
-			frame:ShowWindow(0);
-		end
-		frame:Move(0, 0);
-		frame:SetOffset(g.settings.xPosition, g.settings.yPosition);
-	end
+  if frame ~= nil then
+    if g.settings.show then
+      frame:ShowWindow(1);
+    else
+      frame:ShowWindow(0);
+    end
+    frame:Move(0, 0);
+    frame:SetOffset(g.settings.xPosition, g.settings.yPosition);
+  end
 end
 
 function INDUNPLUS_SAVE_TIME()
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	local acutil = require('acutil');
-	
-	INDUNPLUS_REFLESH_COUNTS();
+  INDUNPLUS_REFLESH_COUNTS();
 
-	local mySession = session.GetMySession();
-	local cid = mySession:GetCID();
-	local charName = info.GetName(session.GetMyHandle());
-	local time = os.time();
+  local mySession = session.GetMySession();
+  local cid = mySession:GetCID();
+  local charName = info.GetName(session.GetMyHandle());
+  local time = os.time();
   local level = info.GetLevel(session.GetMyHandle());
+  local job = info.GetJob(session.GetMyHandle());
 
-	g.settings.records[cid] = {
+  g.records[cid] = {
+    ["version"] = 1.2,
     ["level"] = level,
-		["name"] = charName,
-		["time"] = time,
-		["counts"] = {},
-	};
-	
-	INDUNPLUS_CHECK_BUFF();
+    ["name"] = charName,
+    ["time"] = time,
+    ["job"] = job,
+    ["money"] = GET_TOTAL_MONEY();
+    ["counts"] = {},
+  };
 
-	local counts = g.settings.records[cid]["counts"];
+  INDUNPLUS_CHECK_BOX();
+  INDUNPLUS_CHECK_BUFF();
 
-	for i, indun in ipairs(INDUNPLUS_GET_TYPES()) do
-		local playCount = g.getPlayCount(indun.type);
-		local maxPlayCount =  g.getMaxPlayCount(indun.id);
+  local counts = g.records[cid]["counts"];
 
-		counts[indun.type] = {
-			["playCount"] = playCount,
-			["maxPlayCount"] = maxPlayCount,
-		};
-	end
+  local induns = INDUNPLUS_GET_INDUNS();
 
-	acutil.saveJSON(g.settingsFileLoc, g.settings);
+  for i, indun in ipairs(induns) do
+    counts[indun.type] = {
+      ["playCount"] = INDUNPLUS_GET_PLAY_COUNT(indun),
+      ["maxPlayCount"] = INDUNPLUS_GET_MAX_PLAY_COUNT(indun),
+    };
+  end
+
+  local fileName = string.format("../addons/indunplus/%s.json", cid);
+  acutil.saveJSON(fileName, g.records[cid]);
 end
 
 function INDUNPLUS_REFLESH_COUNTS()
-	local g = _G['ADDONS']['MONOGUSA']['INDUNPLUS'];
-	local resetTime = g.getResetTime();
-	local records = g.settings.records;
-	
-	for cid, record in pairs(records) do
-		if record.time < resetTime then
+  local resetTime = INDUNPLUS_GET_RESETTIME();
 
-			local counts = record.counts;
+  for cid, record in pairs(g.records) do
+    if record.time < resetTime then
 
-			for i, indun in ipairs(INDUNPLUS_GET_TYPES()) do
-				local playCount = 0;
-				local maxPlayCount =  g.getMaxPlayCount(indun.id);
-	
-				counts[indun.type]["playCount"] = playCount;
-				counts[indun.type]["maxPlayCount"] = maxPlayCount;
-			end
-		end
-	end
+      local counts = record.counts;
+      local induns = INDUNPLUS_GET_INDUNS();
+
+      for i, indun in ipairs(induns) do
+        counts[indun.type]["playCount"] = 0;
+        counts[indun.type]["maxPlayCount"] = INDUNPLUS_GET_MAX_PLAY_COUNT(indun);
+      end
+    end
+  end
 end
+
+function INDUNPLUS_ON_ITEM_CHANGE_COUNT(frame, msg, argStr, argNum)
+  local invItem, itemCls = nil, nil;
+  if msg == "INV_ITEM_ADD" then
+    invItem = session.GetInvItem(argNum);
+  else
+    invItem = GET_PC_ITEM_BY_GUID(argStr);
+  end
+
+  itemCls = GetIES(invItem:GetObject());
+  if msg == "INV_ITEM_REMOVE" then
+    g.removingItem = itemCls.ClassID;
+  end
+
+  if MONEY_NAME == itemCls.ClassName then
+    --金情報を更新
+    local cid = session.GetMySession():GetCID();
+    g.records[cid]["money"] = invItem.count;
+    acutil.saveJSON(g.settingsFileLoc, g.settings);
+    local silverText = GET_CHILD_RECURSIVELY(g.frame, "silver_"..cid, "ui::CRichText");
+    silverText:SetText("{@st48}{#AAAAAA}"..GetCommaedText(invItem.count).."s{/}{/}");
+    g.removingItem = nil;
+    return;
+  end
+
+  local box, boxCls = INDUNPLUS_GET_BOX_BYID(itemCls.ClassID);
+
+  if box ~= nil then
+    --箱の表示更新
+    INDUNPLUS_CHECK_BOX();
+    INDUNPLUS_SHOW_PLAYCOUNT();
+    g.removingItem = nil;
+    return;
+  end
+  g.removingItem = nil;
+end
+

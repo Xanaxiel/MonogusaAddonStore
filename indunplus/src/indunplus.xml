@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <uiframe name="indunplus" x="0" y="0" width="200" height="100">
 	<frame snapclient="true" snapframe="true" layout_gravity="center center" margin="0 335 50 0"/>
-	<option visible="true" alwaysVisible="true" closebutton="false" useimageitem="true" piptype="right" autoopen="true" hideable="false"/>
+	<option visible="true" alwaysVisible="false" closebutton="false" useimageitem="true" autoopen="false" hideable="true"/>
 	<input hittest="true" movable="true" moveintitlebar="false" hittestframe="true"/>
 	<layer layerlevel="31"/>
 	<draw drawnotitlebar="false" drawtitlebar="false" drawframe="true"/>
