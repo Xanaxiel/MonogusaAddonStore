@@ -232,7 +232,7 @@ function INDUNPLUS_CREATE_FBTIME(parent, cid, record, fontSize, x, y, width, hei
   local fbText = parent:CreateOrGetControl("richtext", "fbDebuff"..cid, x, y, width, height)
 
   local color = "FFFFFF";
-  if nil ~= record.fbDebuffTime or record.fbDebuffTime <= os.time() then
+  if nil == record.fbDebuffTime or record.fbDebuffTime <= os.time() then
     fbLabelText:ShowWindow(0);
     fbText:ShowWindow(0);
     return false;
