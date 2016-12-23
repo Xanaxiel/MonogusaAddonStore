@@ -315,7 +315,7 @@ function INDUNPLUS_LOAD()
     if err then
       CHAT_SYSTEM('no save file');
     else
-      if t.version ~= nil and t.version < 1.2 then
+      if t.version ~= nil and t.version >= 1.2 then
         CHAT_SYSTEM('[indunplus] savedata is loaded');
         g.settings = t;
       else
