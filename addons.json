@@ -97,7 +97,7 @@
 		"name" : "Show Skill",
 		"file" : "showskill",
 		"extension" : "ipf",
-		"fileVersion" : "v0.9.0",
+		"fileVersion" : "v0.9.1",
 		"releaseTag" : "showskill",
 		"unicode" : "⛄",
 		"description" : "Add-on that show skill you are using by gauge and name. this addon is beta version.",

@@ -117,7 +117,7 @@ function SHOWSKILL_ON_SHOT_START(frame, msg, argStr, argNum)
   local time = 0.4;
   if skillObj.ClassName == "Doppelsoeldner_Cyclone" then
     --サイクロン
-    time = 2 + sklLevel * 0.5;
+    time = 2.5 + sklLevel * 0.3;
   elseif string.find(skillObj.ClassName, "Dievdirbys_") ~= nil and skillObj.ClassName ~= "Dievdirbys_Carve" then
     --ルビーの像
     time = skillObj.ShootTime / 1000;
@@ -125,8 +125,7 @@ function SHOWSKILL_ON_SHOT_START(frame, msg, argStr, argNum)
     --チャンネリング系
     --gauge:ShowWindow(0);
   elseif skillObj.CancelTime == 0 then
-    --キャンセル不可
-    time = skillObj.ShootTime / 1000;
+    --即キャンセル可
   elseif skillObj.CancelTime ~= 0 then
     --キャンセル可
     time = (skillObj.ShootTime - skillObj.CancelTime) / 1000;
