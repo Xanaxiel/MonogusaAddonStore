@@ -103,6 +103,7 @@
 		"description" : "Add-on that show skill you are using by gauge and name. this addon is beta version.",
 		"tags" : [
 			"ui",
+			"skill"
 		]
 	}
 ]
