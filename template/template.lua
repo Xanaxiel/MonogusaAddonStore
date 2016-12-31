@@ -88,9 +88,9 @@ function TEMPLATE_INIT_FRAME(frame)
 end
 
 --コンテキストメニュー表示処理
-function INDUNPLUS_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
+function TEMPLATE_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
   local context = ui.CreateContextMenu("TEMPLATE_RBTN", "Template", 0, 0, 300, 100);
-  ui.AddContextMenuItem(context, "Hide (/idp)", "TEMPLATE_TOGGLE_FRAME()");
+  ui.AddContextMenuItem(context, "Hide", "TEMPLATE_TOGGLE_FRAME()");
   context:Resize(300, context:GetHeight());
   ui.OpenContextMenu(context);
 end
