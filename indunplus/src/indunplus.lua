@@ -504,7 +504,6 @@ function INDUNPLUS_ON_INIT(addon, frame)
   frame:SetEventScript(ui.LBUTTONDOWN, "INDUNPLUS_START_DRAG");
   frame:SetEventScript(ui.LBUTTONUP, "INDUNPLUS_END_DRAG");
 
-  addon:RegisterMsg('SHOT_START', 'INDUNPLUS_ON_ITEM_CHANGE_COUNT');
   addon:RegisterMsg('INV_ITEM_ADD', 'INDUNPLUS_ON_ITEM_CHANGE_COUNT');
   addon:RegisterMsg('INV_ITEM_REMOVE', 'INDUNPLUS_ON_ITEM_CHANGE_COUNT');
   addon:RegisterMsg('INV_ITEM_CHANGE_COUNT', 'INDUNPLUS_ON_ITEM_CHANGE_COUNT');
@@ -689,7 +688,9 @@ function INDUNPLUS_ON_ITEM_CHANGE_COUNT(frame, msg, argStr, argNum)
     --金情報を更新
     local cid = session.GetMySession():GetCID();
     g.records[cid]["money"] = invItem.count;
-    acutil.saveJSON(g.settingsFileLoc, g.settings);
+    local fileName = string.format("../addons/indunplus/%s.json", cid);
+    acutil.saveJSON(fileName, g.records[cid]);
+    
     local silverText = GET_CHILD_RECURSIVELY(g.frame, "silver_"..cid, "ui::CRichText");
     silverText:SetText("{@st48}{#AAAAAA}"..GetCommaedText(invItem.count).."s{/}{/}");
     g.removingItem = nil;
