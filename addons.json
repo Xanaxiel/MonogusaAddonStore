@@ -105,5 +105,18 @@
 			"ui",
 			"skill"
 		]
+	},
+	{
+		"name" : "Camp Warp",
+		"file" : "campwarp",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "campwarp",
+		"unicode" : "⛄",
+		"description" : "Add-on that allows you to warp to camp from chat commands or ui.",
+		"tags" : [
+			"ui",
+			"camp"
+		]
 	}
 ]
