@@ -1,5 +1,6 @@
 --アドオン名（大文字）
-local addonName = "TEMPLATE";
+local addonName = "Template";
+local addonNameUpper = string.upper(addonName);
 local addonNameLower = string.lower(addonName);
 --作者名
 local author = "AUTHOR";
@@ -7,8 +8,8 @@ local author = "AUTHOR";
 --アドオン内で使用する領域を作成。以下、ファイル内のスコープではグローバル変数gでアクセス可
 _G["ADDONS"] = _G["ADDONS"] or {};
 _G["ADDONS"][author] = _G["ADDONS"][author] or {};
-_G["ADDONS"][author][addonName] = _G["ADDONS"][author][addonName] or {};
-local g = _G["ADDONS"][author][addonName];
+_G["ADDONS"][author][addonNameUpper] = _G["ADDONS"][author][addonNameUpper] or {};
+local g = _G["ADDONS"][author][addonNameUpper];
 
 --設定ファイル保存先
 g.settingsFileLoc = string.format("../addons/%s/settings.json", addonNameLower);
@@ -30,9 +31,9 @@ if not g.loaded then
 end
 
 --lua読み込み時のメッセージ
-CHAT_SYSTEM(string.format("%s.lua is loaded", addonName));
+CHAT_SYSTEM(string.format("%s.lua is loaded", addonNameLower));
 
-function TEMPLATE_SAVESETTINGS()
+function TEMPLATE_SAVE_SETTINGS()
   acutil.saveJSON(g.settingsFileLoc, g.settings);
 end
 
@@ -57,7 +58,7 @@ function TEMPLATE_ON_INIT(addon, frame)
   end
 
   --設定ファイル保存処理
-  TEMPLATE_SAVESETTINGS();
+  TEMPLATE_SAVE_SETTINGS();
   --メッセージ受信登録処理
   --addon:RegisterMsg("メッセージ", "内部処理");
 
@@ -89,7 +90,7 @@ end
 
 --コンテキストメニュー表示処理
 function TEMPLATE_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
-  local context = ui.CreateContextMenu("TEMPLATE_RBTN", "Template", 0, 0, 300, 100);
+  local context = ui.CreateContextMenu("TEMPLATE_RBTN", addonName, 0, 0, 300, 100);
   ui.AddContextMenuItem(context, "Hide", "TEMPLATE_TOGGLE_FRAME()");
   context:Resize(300, context:GetHeight());
   ui.OpenContextMenu(context);
@@ -104,17 +105,17 @@ function TEMPLATE_TOGGLE_FRAME()
   else
     --表示->非表示
     g.frame:ShowWindow(0);
-    g.settings.show = false;
+    g.settings.enable = false;
   end
 
-  TEMPLATE_SAVESETTINGS();
+  TEMPLATE_SAVE_SETTINGS();
 end
 
 --フレーム場所保存処理
 function TEMPLATE_END_DRAG()
   g.settings.position.x = g.frame:GetX();
   g.settings.position.y = g.frame:GetY();
-  TEMPLATE_SAVESETTINGS();
+  TEMPLATE_SAVE_SETTINGS();
 end
 
 --チャットコマンド処理（acutil使用時）
@@ -132,13 +133,13 @@ function TEMPLATE_PROCESS_COMMAND(command)
     --有効
     g.settings.enable = true;
     CHAT_SYSTEM(string.format("[%s] is enable", addonName));
-    TEMPLATE_SAVESETTINGS();
+    TEMPLATE_SAVE_SETTINGS();
     return;
   elseif cmd == "off" then
     --無効
     g.settings.enable = false;
     CHAT_SYSTEM(string.format("[%s] is disable", addonName));
-    TEMPLATE_SAVESETTINGS();
+    TEMPLATE_SAVE_SETTINGS();
     return;
   end
   CHAT_SYSTEM(string.format("[%s] Invalid Command", addonName));
