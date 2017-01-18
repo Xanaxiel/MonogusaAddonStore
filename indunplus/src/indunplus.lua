@@ -415,31 +415,31 @@ function INDUNPLUS_GET_SORT_RECORDS()
     end
   end
 
-  if attribute == "level" then
-    table.sort(result, function(a, b)
-        local comp = a.level < b.level;
-        if not asc then
-          return not comp
-        end
-        return comp;
-      end);
-  elseif attribute == "cid" then
-    table.sort(result, function(a, b)
-        local comp = tonumber(a.cid) < tonumber(b.cid);
-        if not asc then
-          return not comp
-        end
-        return comp;
-      end);
-  elseif attribute == "name" then
-    table.sort(result, function(a, b)
-        local comp = string.lower(a.name) < string.lower(b.name);
-        if not asc then
-          return not comp
-        end
-        return comp;
-      end);
-  end
+--  if attribute == "level" then
+--    table.sort(result, function(a, b)
+--        local comp = a.level < b.level;
+--        if not asc then
+--          return not comp
+--        end
+--        return comp;
+--      end);
+--  elseif attribute == "cid" then
+--    table.sort(result, function(a, b)
+--        local comp = tonumber(a.cid) < tonumber(b.cid);
+--        if not asc then
+--          return not comp
+--        end
+--        return comp;
+--      end);
+--  elseif attribute == "name" then
+--    table.sort(result, function(a, b)
+--        local comp = string.lower(a.name) < string.lower(b.name);
+--        if not asc then
+--          return not comp
+--        end
+--        return comp;
+--      end);
+--  end
 
   --指定された要素を比較し、並び替えを行う
   return result;
@@ -588,18 +588,18 @@ function INDUNPLUS_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
   ui.AddContextMenuItem(context, "Hide (/idp)", "INDUNPLUS_TOGGLE_FRAME()");
   ui.AddContextMenuItem(context, "Toggle Minimize", "INDUNPLUS_MINIMIZE_FRAME()");
 
-  --ソート|>
-  local subContextSort = ui.CreateContextMenu("SUBCONTEXT_SORT", "", 0, 0, 100, 0);
-  --ソート選択
-  local subContextSortType = ui.CreateContextMenu("SUBCONTEXT_SORTTYPE", "", 0, 0, 50, 0);
-  for i, sortType in ipairs(g.sortType) do
-    local subContextSortType = ui.CreateContextMenu("SUBCONTEXT_SORTTYPE_"..sortType.label, "", 0, 0, 0, 0);
-    ui.AddContextMenuItem(subContextSortType, "asc(昇順)", string.format("INDUNPLUS_CHANGE_SORTTYPE(%d, true)", i));
-    ui.AddContextMenuItem(subContextSortType, "desc(降順)", string.format("INDUNPLUS_CHANGE_SORTTYPE(%d, false)", i));
-    ui.AddContextMenuItem(subContextSort, sortType.label.."{img white_right_arrow 18 18}", "", nil, 0, 1, subContextSortType);
-  end
-  ui.AddContextMenuItem(context, "Sort {img white_right_arrow 18 18}", "", nil, 0, 1, subContextSort);
-  subContextSort:Resize(150, subContextSort:GetHeight());
+--  --ソート|>
+--  local subContextSort = ui.CreateContextMenu("SUBCONTEXT_SORT", "", 0, 0, 100, 0);
+--  --ソート選択
+--  local subContextSortType = ui.CreateContextMenu("SUBCONTEXT_SORTTYPE", "", 0, 0, 50, 0);
+--  for i, sortType in ipairs(g.sortType) do
+--    local subContextSortType = ui.CreateContextMenu("SUBCONTEXT_SORTTYPE_"..sortType.label, "", 0, 0, 0, 0);
+--    ui.AddContextMenuItem(subContextSortType, "asc(昇順)", string.format("INDUNPLUS_CHANGE_SORTTYPE(%d, true)", i));
+--    ui.AddContextMenuItem(subContextSortType, "desc(降順)", string.format("INDUNPLUS_CHANGE_SORTTYPE(%d, false)", i));
+--    ui.AddContextMenuItem(subContextSort, sortType.label.."{img white_right_arrow 18 18}", "", nil, 0, 1, subContextSortType);
+--  end
+--  ui.AddContextMenuItem(context, "Sort {img white_right_arrow 18 18}", "", nil, 0, 1, subContextSort);
+--  subContextSort:Resize(150, subContextSort:GetHeight());
 
   local subContextRowNum = ui.CreateContextMenu("SUBCONTEXT_ROWNUM", "", 0, 0, 0, 0);
   for i = 1, 5 do
