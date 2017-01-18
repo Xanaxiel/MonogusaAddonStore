@@ -1,5 +1,6 @@
 local addonName = "INDUNPLUS";
 local addonNameLower = string.lower(addonName);
+local currentVersion = 1.3;
 
 _G['ADDONS'] = _G['ADDONS'] or {};
 _G['ADDONS']['MONOGUSA'] = _G['ADDONS']['MONOGUSA'] or {};
@@ -21,7 +22,11 @@ if not g.loaded then
   };
 
   g.settings = {
-    version = 1.2;
+    version = 1.3;
+    --ソート指定
+    sortType = "level";
+    --ソート指定（昇順 or 降順)
+    sortAsc = false;
     --表示非表示
     show = true;
     --X座標、Y座標
@@ -33,9 +38,14 @@ if not g.loaded then
     rowMax = 5,
   };
 
+  g.sortType = {
+    {label="level", attribute="level"},
+    {label="name", attribute="name"},
+    {label="create date", attribute="cid"},
+  };
+
   g.bossDebuffId = 80001;
 end
-
 
 function INDUNPLUS_RELOAD()
   local t, err = acutil.loadJSON(g.settingsFileLoc, g.settings);
@@ -315,7 +325,7 @@ function INDUNPLUS_LOAD()
     if err then
       CHAT_SYSTEM('no save file');
     else
-      if t.version ~= nil and t.version >= 1.2 then
+      if t.version ~= nil and t.version >= currentVersion then
         CHAT_SYSTEM('[indunplus] savedata is loaded');
         g.settings = t;
       else
@@ -335,7 +345,9 @@ function INDUNPLUS_LOAD()
     local fileName = string.format("../addons/indunplus/%s.json", cid);
     local t, err = acutil.loadJSON(fileName);
     if not err then
-      g.records[cid] = t;
+      if t.version ~= nil and t.version >= currentVersion then
+        g.records[cid] = t;
+      end
     end
   end
 end
@@ -386,8 +398,56 @@ function INDUNPLUS_TOGGLE_FRAME()
   acutil.saveJSON(g.settingsFileLoc, g.settings);
 end
 
+function INDUNPLUS_GET_SORT_RECORDS()
+  local attribute = g.settings.sortType or "level";
+  local asc = true;
+  if g.settings.sortAsc ~= nil then
+    asc = g.settings.sortAsc;
+  end
+
+  --配列を複製し、ソート可能な形に変換する
+  local result = {}
+
+  for cid, record in pairs(g.records) do
+    local pcPCInfo = session.barrack.GetMyAccount():GetByStrCID(cid);
+    if pcPCInfo ~= nil then
+      table.insert(result, record);
+    end
+  end
+
+  if attribute == "level" then
+    table.sort(result, function(a, b)
+        local comp = a.level < b.level;
+        if not asc then
+          return not comp
+        end
+        return comp;
+      end);
+  elseif attribute == "cid" then
+    table.sort(result, function(a, b)
+        local comp = tonumber(a.cid) < tonumber(b.cid);
+        if not asc then
+          return not comp
+        end
+        return comp;
+      end);
+  elseif attribute == "name" then
+    table.sort(result, function(a, b)
+        local comp = string.lower(a.name) < string.lower(b.name);
+        if not asc then
+          return not comp
+        end
+        return comp;
+      end);
+  end
+
+  --指定された要素を比較し、並び替えを行う
+  return result;
+end
+
+
 function INDUNPLUS_SHOW_PLAYCOUNT()
-  local records = g.records;
+  local records = INDUNPLUS_GET_SORT_RECORDS();
 
   local frame = ui.GetFrame("indunplus");
   local fontSize = 16
@@ -421,7 +481,8 @@ function INDUNPLUS_SHOW_PLAYCOUNT()
     return;
   end
 
-  for cid, record in pairs(records) do
+  for i, record in ipairs(records) do
+    local cid = record.cid;
     local pcPCInfo = session.barrack.GetMyAccount():GetByStrCID(cid);
     if pcPCInfo ~= nil then
       if cnt > 0 and cnt % rowMax == 0 then
@@ -523,9 +584,22 @@ function INDUNPLUS_ON_INIT(addon, frame)
 end
 
 function INDUNPLUS_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
-  local context = ui.CreateContextMenu("INDUNPLUS_RBTN", "IndunPlus", 0, 0, 300, 100);
+  local context = ui.CreateContextMenu("INDUNPLUS_RBTN", "IndunPlus", 0, 0, 150, 100);
   ui.AddContextMenuItem(context, "Hide (/idp)", "INDUNPLUS_TOGGLE_FRAME()");
   ui.AddContextMenuItem(context, "Toggle Minimize", "INDUNPLUS_MINIMIZE_FRAME()");
+
+  --ソート|>
+  local subContextSort = ui.CreateContextMenu("SUBCONTEXT_SORT", "", 0, 0, 100, 0);
+  --ソート選択
+  local subContextSortType = ui.CreateContextMenu("SUBCONTEXT_SORTTYPE", "", 0, 0, 50, 0);
+  for i, sortType in ipairs(g.sortType) do
+    local subContextSortType = ui.CreateContextMenu("SUBCONTEXT_SORTTYPE_"..sortType.label, "", 0, 0, 0, 0);
+    ui.AddContextMenuItem(subContextSortType, "asc(昇順)", string.format("INDUNPLUS_CHANGE_SORTTYPE(%d, true)", i));
+    ui.AddContextMenuItem(subContextSortType, "desc(降順)", string.format("INDUNPLUS_CHANGE_SORTTYPE(%d, false)", i));
+    ui.AddContextMenuItem(subContextSort, sortType.label.."{img white_right_arrow 18 18}", "", nil, 0, 1, subContextSortType);
+  end
+  ui.AddContextMenuItem(context, "Sort {img white_right_arrow 18 18}", "", nil, 0, 1, subContextSort);
+  subContextSort:Resize(150, subContextSort:GetHeight());
 
   local subContextRowNum = ui.CreateContextMenu("SUBCONTEXT_ROWNUM", "", 0, 0, 0, 0);
   for i = 1, 5 do
@@ -534,8 +608,16 @@ function INDUNPLUS_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
 
   ui.AddContextMenuItem(context, "Row Num {img white_right_arrow 18 18}", "", nil, 0, 1, subContextRowNum);
 
-  context:Resize(300, context:GetHeight());
+  context:Resize(150, context:GetHeight());
   ui.OpenContextMenu(context);
+end
+
+function INDUNPLUS_CHANGE_SORTTYPE(index, asc)
+  local sortType = g.sortType[index].attribute;
+  g.settings.sortType = sortType;
+  g.settings.sortAsc = asc;
+  acutil.saveJSON(g.settingsFileLoc, g.settings);
+  INDUNPLUS_SHOW_PLAYCOUNT();
 end
 
 function INDUNPLUS_CHANGE_ROWNUM(num)
@@ -627,7 +709,8 @@ function INDUNPLUS_SAVE_TIME()
   local job = info.GetJob(session.GetMyHandle());
 
   g.records[cid] = {
-    ["version"] = 1.2,
+    ["version"] = currentVersion,
+    ["cid"] = cid,
     ["level"] = level,
     ["name"] = charName,
     ["time"] = time,
@@ -664,6 +747,9 @@ function INDUNPLUS_REFLESH_COUNTS()
       local induns = INDUNPLUS_GET_INDUNS();
 
       for i, indun in ipairs(induns) do
+        if counts[indun.type] == nil then
+          counts[indun.type] = {};
+        end
         counts[indun.type]["playCount"] = 0;
         counts[indun.type]["maxPlayCount"] = INDUNPLUS_GET_MAX_PLAY_COUNT(indun);
       end
@@ -690,7 +776,7 @@ function INDUNPLUS_ON_ITEM_CHANGE_COUNT(frame, msg, argStr, argNum)
     g.records[cid]["money"] = invItem.count;
     local fileName = string.format("../addons/indunplus/%s.json", cid);
     acutil.saveJSON(fileName, g.records[cid]);
-    
+
     local silverText = GET_CHILD_RECURSIVELY(g.frame, "silver_"..cid, "ui::CRichText");
     silverText:SetText("{@st48}{#AAAAAA}"..GetCommaedText(invItem.count).."s{/}{/}");
     g.removingItem = nil;

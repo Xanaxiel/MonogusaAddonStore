@@ -17,7 +17,7 @@
 		"name" : "IndunPlus",
 		"file" : "indunplus",
 		"extension" : "ipf",
-		"fileVersion" : "v1.2.3",
+		"fileVersion" : "v1.3.0",
 		"releaseTag" : "indunplus",
 		"unicode" : "⛄",
 		"description" : "Add-on that displays the number of instance dungeons and world boss buff time for each character",
