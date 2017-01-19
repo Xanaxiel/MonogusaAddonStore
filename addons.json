@@ -118,5 +118,18 @@
 			"ui",
 			"camp"
 		]
+	},
+	{
+		"name" : "Time Plus",
+		"file" : "timeplus",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "timeplus",
+		"unicode" : "⛄",
+		"description" : "simple movable clock with seccond",
+		"tags" : [
+			"ui",
+			"timer"
+		]
 	}
 ]
