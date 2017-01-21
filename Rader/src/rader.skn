@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<skinset name="MONOGUSA_RADER">
+	<imagelist category="MONOGUSA_RADER">
+		<image name="sugoidot" file="rader\sugoidot.tga" imgrect="0 0 16 16" />
+	</imagelist>
+</skinset>
