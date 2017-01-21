@@ -31,6 +31,7 @@ function EASYSEARCH_INV_RBTN(itemObj, slot)
 	local chip = GET_CHILD(gBox, "chip", "ui::CCheckBox");
 	chip:SetCheck(1);
 	local name = dictionary.ReplaceDicIDInCompStr(itemObj.Name);
+	if string.len(name) > 20 then name = string.sub(name,1,20) end
 	find_name:SetText(name);
 	SEARCH_ITEM_MARKET();
 end
