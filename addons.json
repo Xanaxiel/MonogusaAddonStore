@@ -131,5 +131,18 @@
 			"ui",
 			"timer"
 		]
+	},
+	{
+		"name" : "Rader",
+		"file" : "rader",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "rader",
+		"unicode" : "⛄",
+		"description" : "敵の位置をミニマップ風のUI上に表示する",
+		"tags" : [
+			"ui",
+			"rader"
+		]
 	}
 ]
