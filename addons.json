@@ -136,7 +136,7 @@
 		"name" : "Rader",
 		"file" : "rader",
 		"extension" : "ipf",
-		"fileVersion" : "v1.1.2",
+		"fileVersion" : "v1.1.3",
 		"releaseTag" : "rader",
 		"unicode" : "⛄",
 		"description" : "show enemy position on minimap",

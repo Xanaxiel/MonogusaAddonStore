@@ -122,7 +122,7 @@ function RADER_3SEC()
   frame:SetOffset(g.settings.position.x, g.settings.position.y);
   --フレーム初期化処理
   RADER_INIT_FRAME(frame);
-  addon:RegisterMsg("MON_ENTER_SCENE", "RADER_ON_MON_ENTER_SCENE");
+  g.addon:RegisterMsg("MON_ENTER_SCENE", "RADER_ON_MON_ENTER_SCENE");
   frame:RunUpdateScript("RADER_UPDATE");
 end
 
