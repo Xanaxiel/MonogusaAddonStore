@@ -104,7 +104,7 @@ function RADER_ON_INIT(addon, frame)
   frame:SetEventScript(ui.RBUTTONDOWN, "RADER_CONTEXT_MENU");
   --ドラッグ
   frame:SetEventScript(ui.LBUTTONUP, "RADER_END_DRAG");
-  addon:RegisterMsg("MON_ENTER_SCENE", "RADER_ON_MON_ENTER_SCENE");
+
   addon:RegisterMsg("GAME_START_3SEC", "RADER_3SEC");
 
 end
@@ -120,9 +120,9 @@ function RADER_3SEC()
   --Moveではうまくいかないので、OffSetを使用する…
   frame:Move(0, 0);
   frame:SetOffset(g.settings.position.x, g.settings.position.y);
-
   --フレーム初期化処理
   RADER_INIT_FRAME(frame);
+  addon:RegisterMsg("MON_ENTER_SCENE", "RADER_ON_MON_ENTER_SCENE");
   frame:RunUpdateScript("RADER_UPDATE");
 end
 
