@@ -390,6 +390,7 @@ function RADER_END_DRAG()
   g.settings.position.x = g.frame:GetX();
   g.settings.position.y = g.frame:GetY();
   RADER_LOAD_USERDATA();
+  g.settings.minimapMode = false;
   RADER_SAVE_SETTINGS();
 end
 
