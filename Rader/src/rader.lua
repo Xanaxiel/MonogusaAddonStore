@@ -4,6 +4,7 @@ local addonNameUpper = string.upper(addonName);
 local addonNameLower = string.lower(addonName);
 --作者名
 local author = "MONOGUSA";
+local currentVersion = 1.1;
 
 --アドオン内で使用する領域を作成。以下、ファイル内のスコープではグローバル変数gでアクセス可
 _G["ADDONS"] = _G["ADDONS"] or {};
@@ -37,8 +38,10 @@ if not g.loaded then
   g.layers = {};
 
   g.settings = {
+    version = currentVersion,
     --有効/無効
     enable = true,
+    minimapMode = false,
     --フレームサイズ
     width = 310,
     height = 230,
@@ -82,7 +85,12 @@ function RADER_ON_INIT(addon, frame)
       CHAT_SYSTEM(string.format("[%s] cannot load setting files", addonName));
     else
       --設定ファイル読み込み成功時処理
-      g.settings = t;
+      if g.settings.version >= currentVersion then
+        --バージョンが異なる場合
+        g.settings = t;  
+      else
+        CHAT_SYSTEM(string.format("[%s] reset old setting files", addonName));
+      end
     end
     g.loaded = true;
   end
@@ -96,9 +104,6 @@ function RADER_ON_INIT(addon, frame)
   frame:SetEventScript(ui.LBUTTONUP, "RADER_END_DRAG");
   addon:RegisterMsg("MON_ENTER_SCENE", "RADER_ON_MON_ENTER_SCENE");
 
-  --フレーム初期化処理
-  RADER_INIT_FRAME(frame);
-
   --再表示処理
   if g.settings.enable then
     frame:ShowWindow(1);
@@ -109,17 +114,20 @@ function RADER_ON_INIT(addon, frame)
   frame:Move(0, 0);
   frame:SetOffset(g.settings.position.x, g.settings.position.y);
 
+  --フレーム初期化処理
+  RADER_INIT_FRAME(frame);
+
   frame:RunUpdateScript("RADER_UPDATE");
 end
 
-function RADER_CHANGE_ZOOM(percentage)
-  g.settings.zoomRate = percentage;
-  g.settings.zoomRate = g.settings.zoomRate >= 20 and g.settings.zoomRate or 20;
-  g.settings.zoomRate = g.settings.zoomRate <= 200 and g.settings.zoomRate or 200;
+function RADER_CHANGE_ZOOM(percentage, save)
 
-  g.mapWidth = g.mapui:GetImageWidth() * g.settings.zoomRate / 100;
-  g.mapHeight = g.mapui:GetImageHeight() * g.settings.zoomRate / 100;
-  RADER_SAVE_SETTINGS();
+  g.mapWidth = g.mapui:GetImageWidth() * (100 + percentage) / 100;
+  g.mapHeight = g.mapui:GetImageHeight() * (100 + percentage) / 100;
+  if save then
+    g.settings.zoomRate = percentage;
+    RADER_SAVE_SETTINGS()
+  end
 end
 
 function RADER_INIT_FRAME(frame)
@@ -160,11 +168,29 @@ function RADER_INIT_FRAME(frame)
   g.mapbg = mapbg;
   g.mapui = mapui;
 
-  RADER_INIT_SIZE();
-  RADER_CHANGE_BG_ALPHA(g.settings.alpha.bg);
-  RADER_CHANGE_MYSELF_ALPHA(g.settings.alpha.myself);
+  RADER_LOAD_USERDATA();
+  if g.settings.minimapMode then
+    RADER_ENABLE_RADER_MINIMAP_MODE();
+  end
   RADER_UPDATE();
 end
+
+function RADER_ENABLE_RADER_MINIMAP_MODE(save)
+  g.settings.minimapMode = true;
+  local minimap = ui.GetFrame("minimap");
+  local x = minimap:GetX();
+  local y = minimap:GetY();
+  g.frame:Move(0, 0);
+  g.frame:SetOffset(x, y);
+
+  RADER_CHANGE_MYSELF_ALPHA(0, false);
+  RADER_CHANGE_BG_ALPHA(0, false);
+  RADER_CHANGE_ZOOM(GET_MINIMAPSIZE(), false);
+  if save then
+    RADER_SAVE_SETTINGS();
+  end
+end
+
 
 --レイヤー一覧を初期化
 function RADER_INIT_LAYERS(frame)
@@ -182,26 +208,34 @@ function RADER_INIT_LAYERS(frame)
   return layers;
 end
 
-function RADER_CHANGE_BG_ALPHA(alpha)
+function RADER_CHANGE_BG_ALPHA(alpha, save)
   local A = string.format("%02x", math.floor(alpha / 100 * 255));
   g.mapbg:SetColorTone(A.."FF0000");
   g.mapui:SetColorTone(A.."FFFFFF");
   --アルファ値を保存
-  g.settings.alpha.bg = alpha;
-  RADER_SAVE_SETTINGS();
+
+  if save then
+    g.settings.alpha.bg = alpha;
+    RADER_SAVE_SETTINGS()
+  end
 end
 
-function RADER_CHANGE_MYSELF_ALPHA(alpha)
+function RADER_CHANGE_MYSELF_ALPHA(alpha, save)
   local A = string.format("%02x", math.floor(alpha / 100 * 255));
   g.myself:SetColorTone(A.."FFFFFF");
+  
   --アルファ値を保存
-  g.settings.alpha.myself = alpha;
-  RADER_SAVE_SETTINGS();
+  if save then
+    g.settings.alpha.myself = alpha;
+    RADER_SAVE_SETTINGS();
+  end
 end
 
-function RADER_INIT_SIZE()
-  g.mapWidth = g.mapui:GetImageWidth() * g.settings.zoomRate / 100;
-  g.mapHeight = g.mapui:GetImageHeight() * g.settings.zoomRate / 100;
+function RADER_LOAD_USERDATA()
+  RADER_CHANGE_BG_ALPHA(g.settings.alpha.bg);
+  RADER_CHANGE_MYSELF_ALPHA(g.settings.alpha.myself);
+  g.mapWidth = g.mapui:GetImageWidth() * (100 + g.settings.zoomRate) / 100;
+  g.mapHeight = g.mapui:GetImageHeight() * (100 + g.settings.zoomRate) / 100;
 end
 
 function RADER_UPDATE()
@@ -265,26 +299,27 @@ end
 function RADER_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
   local context = ui.CreateContextMenu("RADER_RBTN", addonName, 0, 0, 150, 100);
   ui.AddContextMenuItem(context, "Hide", "RADER_TOGGLE_FRAME()");
+  ui.AddContextMenuItem(context, "Draw on minimap", "RADER_ENABLE_RADER_MINIMAP_MODE(true)");
 
   --zoom
   local subContextZoom = ui.CreateContextMenu("SUBCONTEXT_ZOOM", "", 0, 0, 0, 0);
-  for i = -3, 5 do
+  for i = -3, 7 do
     local percentage = 100 + i*20
-    ui.AddContextMenuItem(subContextZoom, percentage.."%" , string.format("RADER_CHANGE_ZOOM(%d)", (percentage)));
+    ui.AddContextMenuItem(subContextZoom, percentage.."%" , string.format("RADER_CHANGE_ZOOM(%d, true)", i*20));
   end
   ui.AddContextMenuItem(context, "Zoom {img white_right_arrow 18 18}", "", nil, 0, 1, subContextZoom);
 
   --bg alpha
   local subContextBGAlphaNum = ui.CreateContextMenu("SUBCONTEXT_BG_ALPHA", "", 0, 0, 0, 0);
   for i = 0, 10 do
-    ui.AddContextMenuItem(subContextBGAlphaNum, (i*10).."%" , string.format("RADER_CHANGE_BG_ALPHA(%d)", (i*10)));
+    ui.AddContextMenuItem(subContextBGAlphaNum, (i*10).."%" , string.format("RADER_CHANGE_BG_ALPHA(%d, true)", (i*10)));
   end
   ui.AddContextMenuItem(context, "BG Alpha {img white_right_arrow 18 18}", "", nil, 0, 1, subContextBGAlphaNum);
 
   --myself alpha
   local subContextMYSELFAlphaNum = ui.CreateContextMenu("SUBCONTEXT_MYSELF_ALPHA", "", 0, 0, 0, 0);
   for i = 0, 10 do
-    ui.AddContextMenuItem(subContextMYSELFAlphaNum, (i*10).."%" , string.format("RADER_CHANGE_MYSELF_ALPHA(%d)", (i*10)));
+    ui.AddContextMenuItem(subContextMYSELFAlphaNum, (i*10).."%" , string.format("RADER_CHANGE_MYSELF_ALPHA(%d, true)", (i*10)));
   end
   ui.AddContextMenuItem(context, "MYSELF Alpha {img white_right_arrow 18 18}", "", nil, 0, 1, subContextMYSELFAlphaNum);
 
@@ -339,6 +374,7 @@ end
 function RADER_END_DRAG()
   g.settings.position.x = g.frame:GetX();
   g.settings.position.y = g.frame:GetY();
+  RADER_LOAD_USERDATA();
   RADER_SAVE_SETTINGS();
 end
 
@@ -367,15 +403,20 @@ function RADER_PROCESS_COMMAND(command)
     return ui.MsgBox(msg,"","Nope")
   end
 
-  if cmd == "on" then
+  if cmd == "minimap" then
+    RADER_ENABLE_RADER_MINIMAP_MODE(true)
+    return
+  elseif cmd == "on" then
     --有効
     g.settings.enable = true;
+    g.frame:ShowWindow(1);
     CHAT_SYSTEM(string.format("[%s] is enable", addonName));
     RADER_SAVE_SETTINGS();
     return;
   elseif cmd == "off" then
     --無効
     g.settings.enable = false;
+    g.frame:ShowWindow(0);
     CHAT_SYSTEM(string.format("[%s] is disable", addonName));
     RADER_SAVE_SETTINGS();
     return;
@@ -387,14 +428,14 @@ function RADER_PROCESS_COMMAND(command)
 
     if arg1 == "up" then
       local zoom = g.settings.zoomRate + 10;
-      RADER_CHANGE_ZOOM(zoom);
+      RADER_CHANGE_ZOOM(zoom, true);
       return;
     elseif arg1 == "down" then
       local zoom = g.settings.zoomRate - 10;
-      RADER_CHANGE_ZOOM(zoom);
+      RADER_CHANGE_ZOOM(zoom, true);
       return;
     elseif tonumber(arg1) ~= nil then
-      RADER_CHANGE_ZOOM(tonumber(arg1));
+      RADER_CHANGE_ZOOM(tonumber(arg1), true);
       return;
     end
   elseif cmd == "filter" then

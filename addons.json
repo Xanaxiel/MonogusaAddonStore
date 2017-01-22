@@ -136,10 +136,10 @@
 		"name" : "Rader",
 		"file" : "rader",
 		"extension" : "ipf",
-		"fileVersion" : "v1.0.0",
+		"fileVersion" : "v1.1.0",
 		"releaseTag" : "rader",
 		"unicode" : "⛄",
-		"description" : "敵の位置をミニマップ風のUI上に表示する",
+		"description" : "show enemy position on minimap",
 		"tags" : [
 			"ui",
 			"rader"
