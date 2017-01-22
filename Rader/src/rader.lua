@@ -27,6 +27,8 @@ if not g.loaded then
   g.myself  = nil;
   g.enemyLayer = nil;
   g.mapprop = nil;
+  
+  g.currentZoomRate = 0;
 
   --レイヤー重ね順指定
   g.layerNames = {
@@ -103,8 +105,13 @@ function RADER_ON_INIT(addon, frame)
   --ドラッグ
   frame:SetEventScript(ui.LBUTTONUP, "RADER_END_DRAG");
   addon:RegisterMsg("MON_ENTER_SCENE", "RADER_ON_MON_ENTER_SCENE");
+  addon:RegisterMsg("GAME_START_3SEC", "RADER_3SEC");
 
-  --再表示処理
+end
+
+function RADER_3SEC()
+  local frame = g.frame;
+    --再表示処理
   if g.settings.enable then
     frame:ShowWindow(1);
   else
@@ -116,16 +123,16 @@ function RADER_ON_INIT(addon, frame)
 
   --フレーム初期化処理
   RADER_INIT_FRAME(frame);
-
   frame:RunUpdateScript("RADER_UPDATE");
 end
 
 function RADER_CHANGE_ZOOM(percentage, save)
-
+  g.currentZoomRate = percentage;
   g.mapWidth = g.mapui:GetImageWidth() * (100 + percentage) / 100;
   g.mapHeight = g.mapui:GetImageHeight() * (100 + percentage) / 100;
   if save then
     g.settings.zoomRate = percentage;
+    
     RADER_SAVE_SETTINGS()
   end
 end
@@ -170,12 +177,13 @@ function RADER_INIT_FRAME(frame)
 
   RADER_LOAD_USERDATA();
   if g.settings.minimapMode then
-    RADER_ENABLE_RADER_MINIMAP_MODE();
+    RADER_ENABLE_RADER_MINIMAP_MODE(true);
   end
   RADER_UPDATE();
 end
 
 function RADER_ENABLE_RADER_MINIMAP_MODE(save)
+  g.frame:Resize(310, 230 -35);
   g.settings.minimapMode = true;
   local minimap = ui.GetFrame("minimap");
   local x = minimap:GetX();
@@ -185,6 +193,7 @@ function RADER_ENABLE_RADER_MINIMAP_MODE(save)
 
   RADER_CHANGE_MYSELF_ALPHA(0, false);
   RADER_CHANGE_BG_ALPHA(0, false);
+  g.currentZoomRate = GET_MINIMAPSIZE();
   RADER_CHANGE_ZOOM(GET_MINIMAPSIZE(), false);
   if save then
     RADER_SAVE_SETTINGS();
@@ -232,6 +241,7 @@ function RADER_CHANGE_MYSELF_ALPHA(alpha, save)
 end
 
 function RADER_LOAD_USERDATA()
+  g.frame:Resize(310, 230);
   RADER_CHANGE_BG_ALPHA(g.settings.alpha.bg);
   RADER_CHANGE_MYSELF_ALPHA(g.settings.alpha.myself);
   g.mapWidth = g.mapui:GetImageWidth() * (100 + g.settings.zoomRate) / 100;
@@ -248,6 +258,11 @@ function RADER_UPDATE()
   local mapName = session.GetMapName();
   if ui.IsImageExist(mapName) == 0 then
     return;
+  end
+  
+  if g.settings.minimapMode and g.currentZoomRate ~= GET_MINIMAPSIZE() then
+    
+    RADER_ENABLE_RADER_MINIMAP_MODE(false);
   end
 
   local w = g.mapWidth;
