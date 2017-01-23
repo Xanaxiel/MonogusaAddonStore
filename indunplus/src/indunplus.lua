@@ -36,6 +36,8 @@ if not g.loaded then
     resetHour = 6,
     --1列に表示するキャラ数
     rowMax = 5,
+    --貯金
+    deposit = 0
   };
 
   g.sortType = {
@@ -446,6 +448,15 @@ function INDUNPLUS_GET_SORT_RECORDS()
 end
 
 
+function INDUNPLUS_GET_TOTAL_MONEY(records)
+  local sum = g.settings.deposit or 0;
+  for i, record in ipairs(records) do
+    sum = sum + record.money
+  end
+
+  return sum
+end
+
 function INDUNPLUS_SHOW_PLAYCOUNT()
   local records = INDUNPLUS_GET_SORT_RECORDS();
 
@@ -468,21 +479,34 @@ function INDUNPLUS_SHOW_PLAYCOUNT()
   local pageWidth = 250;
   local pageHeight = fontSize * lineNum + 15;
 
-  local title = frame:CreateOrGetControl("richtext", "title", 10, 12, pageWidth, fontSize);
+  local title = GET_CHILD(frame, "title", "ui::CRichText");
   local minButton = frame:CreateOrGetControl("button", "minimize", 0, 0, 25, 25);
+  
 
   if g.settings.minimize then
     --最小化時
     minButton:Move(0, 0);
-    minButton:SetOffset(180 -30, 5);
-    frame:Resize(180, 35);
+    minButton:SetOffset(250 -30, 5);
+    frame:Resize(250, 35);
     frame:Move(0, 0);
     frame:SetOffset(g.settings.xPosition, g.settings.yPosition);
+    local money = INDUNPLUS_GET_TOTAL_MONEY(records);
+    title:SetText(string.format("{@st48}/idp {img silver 20 20}%s{/}", GetCommaedText(money)));
+    title:EnableHitTest(0);
     return;
+  else
+
+    local money = INDUNPLUS_GET_TOTAL_MONEY(records);
+    title:SetText(string.format("{@st48}Total{img silver 20 20}%s{/}", GetCommaedText(money)));
+    title:EnableHitTest(1);
   end
+
+  local deposit = g.settings.deposit or 0;
+  local tooltip = string.format("{@st48}Deposit{img silver 20 20}%s{/}", GetCommaedText(deposit));
 
   for i, record in ipairs(records) do
     local cid = record.cid;
+    --tooltip = tooltip.. string.format("{@st48}%s{img silver 20 20}%s{/}{nl}", record.name ,GetCommaedText(record.money));
     local pcPCInfo = session.barrack.GetMyAccount():GetByStrCID(cid);
     if pcPCInfo ~= nil then
       if cnt > 0 and cnt % rowMax == 0 then
@@ -538,6 +562,8 @@ function INDUNPLUS_SHOW_PLAYCOUNT()
     end
   end
 
+  title:SetTextTooltip(tooltip);
+
   minButton:Move(0, 0);
   minButton:SetOffset(pageWidth * (col + 1) -30, 10);
   frame:Resize(pageWidth * (col + 1) + 10, height);
@@ -572,11 +598,19 @@ function INDUNPLUS_ON_INIT(addon, frame)
   addon:RegisterMsg("GAME_START_3SEC", "INDUNPLUS_3SEC");
   addon:RegisterMsg('BUFF_ADD', 'INDUNPLUS_UPDATE_BUFF');
   addon:RegisterMsg('BUFF_REMOVE', 'INDUNPLUS_UPDATE_BUFF');
+  
+  --銀行
+ 	addon:RegisterMsg("ACCOUNT_WAREHOUSE_ITEM_LIST", "INDUNPLUS_SAVE_DEPOSIT");
+	addon:RegisterMsg("ACCOUNT_WAREHOUSE_ITEM_ADD", "INDUNPLUS_SAVE_DEPOSIT");
+	addon:RegisterMsg("ACCOUNT_WAREHOUSE_ITEM_REMOVE", "INDUNPLUS_SAVE_DEPOSIT");
+	addon:RegisterMsg("ACCOUNT_WAREHOUSE_ITEM_CHANGE_COUNT", "INDUNPLUS_SAVE_DEPOSIT");
+	addon:RegisterMsg("ACCOUNT_WAREHOUSE_ITEM_IN", "INDUNPLUS_SAVE_DEPOSIT");
+
 
   local title = frame:CreateOrGetControl("richtext", "title", 10, 12, 200, 16);
   title:EnableHitTest(0);
   tolua.cast(title, "ui::CRichText");
-  title:SetText("{@st48}IndunPlus /idp{/}");
+  title:SetText(string.format("{@st48}/idp {img silver 20 20}%s{/}",GetCommaedText(g.settings.deposit)));
 
   local minButton = frame:CreateOrGetControl("button", "minimize", 0, 0, 25, 25);
   minButton:SetEventScript(ui.LBUTTONDOWN, "INDUNPLUS_MINIMIZE_FRAME");
@@ -795,3 +829,21 @@ function INDUNPLUS_ON_ITEM_CHANGE_COUNT(frame, msg, argStr, argNum)
   g.removingItem = nil;
 end
 
+function INDUNPLUS_SAVE_DEPOSIT()
+  local itemList = session.GetEtcItemList(IT_ACCOUNT_WAREHOUSE);
+  local index = itemList:Head();
+  local itemCnt = itemList:Count();
+  local deposit = 0;
+
+  while itemList:InvalidIndex() ~= index do
+    local invItem = itemList:Element(index);
+    local obj = GetIES(invItem:GetObject());
+    if obj.ClassName == MONEY_NAME then
+      g.settings.deposit = invItem.count;
+      acutil.saveJSON(g.settingsFileLoc, g.settings);
+      INDUNPLUS_SHOW_PLAYCOUNT();
+      return;
+    end
+    index = itemList:Next(index);
+  end
+end
