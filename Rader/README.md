@@ -3,8 +3,14 @@
 # 使い方  
 /rader on/off  
 表示/非表示切り替え  
-
-# 縮尺変更  
+  
+#ミニマップモード 
+/rader minimap  
+レーダーをミニマップに重ねて表示する  
+# サイズ変更
+/rader size 数字w 数字h  
+幅w 高さhにサイズを変更  
+# 縮尺変更
 /rader zoom 数字n  
 n%の縮尺でミニマップを表示  
 /rader zoom up  

@@ -27,8 +27,7 @@ if not g.loaded then
   g.myself  = nil;
   g.enemyLayer = nil;
   g.mapprop = nil;
-  
-  g.currentZoomRate = 0;
+  g.currentZoomRate = 140;
 
   --レイヤー重ね順指定
   g.layerNames = {
@@ -106,7 +105,7 @@ function RADER_ON_INIT(addon, frame)
   frame:SetEventScript(ui.LBUTTONUP, "RADER_END_DRAG");
 
   addon:RegisterMsg("GAME_START_3SEC", "RADER_3SEC");
-
+  --RADER_3SEC();
 end
 
 function RADER_3SEC()
@@ -127,12 +126,16 @@ function RADER_3SEC()
 end
 
 function RADER_CHANGE_ZOOM(percentage, save)
+  if not percentage then
+    percentage = g.settings.zoomRate;
+    save = false;
+  end
+  
   g.currentZoomRate = percentage;
   g.mapWidth = g.mapui:GetImageWidth() * (100 + percentage) / 100;
   g.mapHeight = g.mapui:GetImageHeight() * (100 + percentage) / 100;
   if save then
     g.settings.zoomRate = percentage;
-    
     RADER_SAVE_SETTINGS()
   end
 end
@@ -142,7 +145,7 @@ function RADER_INIT_FRAME(frame)
   --フレーム初期化処理
   local w = g.settings.width;
   local h = g.settings.height
-  frame:Resize(w, h);
+  --frame:Resize(w, h);
 
   --マップ
   local mapbg = frame:CreateOrGetControl("picture", "mapbg", 0, 0, 4096, 2048);
@@ -168,22 +171,23 @@ function RADER_INIT_FRAME(frame)
   myself:SetImage("minimap_leader");
   mapbg:SetImage(mapName .. "_fog");
 
-  --自キャラを中央揃え
-  myself:SetOffset(frame:GetWidth() / 2 - myself:GetImageWidth() / 2 , frame:GetHeight() / 2 - myself:GetImageHeight() / 2);
-
   g.myself = myself;
   g.mapbg = mapbg;
   g.mapui = mapui;
 
+  RADER_CHANGE_SIZE(w, h, false)
   RADER_LOAD_USERDATA();
   if g.settings.minimapMode then
     RADER_ENABLE_RADER_MINIMAP_MODE(true);
+  else
+    RADER_CHANGE_ZOOM()
   end
   RADER_UPDATE();
 end
 
 function RADER_ENABLE_RADER_MINIMAP_MODE(save)
-  g.frame:Resize(310, 230 -35);
+  RADER_CHANGE_SIZE(310, 230, false);
+  g.frame:Resize(310, 195);
   g.settings.minimapMode = true;
   local minimap = ui.GetFrame("minimap");
   local x = minimap:GetX();
@@ -193,8 +197,9 @@ function RADER_ENABLE_RADER_MINIMAP_MODE(save)
 
   RADER_CHANGE_MYSELF_ALPHA(0, false);
   RADER_CHANGE_BG_ALPHA(0, false);
-  g.currentZoomRate = GET_MINIMAPSIZE();
-  RADER_CHANGE_ZOOM(GET_MINIMAPSIZE(), false);
+  g.currentZoomRate = GET_MINIMAPSIZE() or 140;
+  RADER_CHANGE_ZOOM(g.currentZoomRate, false);
+  RADER_UPDATE(true);
   if save then
     RADER_SAVE_SETTINGS();
   end
@@ -240,15 +245,37 @@ function RADER_CHANGE_MYSELF_ALPHA(alpha, save)
   end
 end
 
+function RADER_CHANGE_SIZE(w, h, save)
+  
+  if w == nil or h == nil then
+    w = g.settings.width
+    h = g.settings.height;
+    save = false;
+  end
+  
+  local frame = g.frame;
+  local myself = g.myself;
+  frame:Resize(w, h);
+  --自キャラを中央揃え
+  myself:SetOffset(frame:GetWidth() / 2 - myself:GetImageWidth() / 2 , frame:GetHeight() / 2 - myself:GetImageHeight() / 2);
+
+  if save then
+    g.settings.width = w;
+    g.settings.height = h;
+    RADER_SAVE_SETTINGS();
+  end
+ end
+
+
 function RADER_LOAD_USERDATA()
-  g.frame:Resize(310, 230);
+  --g.frame:Resize(g.settings.width, g.settings.height);
   RADER_CHANGE_BG_ALPHA(g.settings.alpha.bg);
   RADER_CHANGE_MYSELF_ALPHA(g.settings.alpha.myself);
   g.mapWidth = g.mapui:GetImageWidth() * (100 + g.settings.zoomRate) / 100;
   g.mapHeight = g.mapui:GetImageHeight() * (100 + g.settings.zoomRate) / 100;
 end
 
-function RADER_UPDATE()
+function RADER_UPDATE(forceUpdate)
   if not g.settings.enable then
     return;
   end
@@ -261,7 +288,6 @@ function RADER_UPDATE()
   end
   
   if g.settings.minimapMode and g.currentZoomRate ~= GET_MINIMAPSIZE() then
-    
     RADER_ENABLE_RADER_MINIMAP_MODE(false);
   end
 
@@ -285,7 +311,7 @@ function RADER_UPDATE()
   local bx = frame:GetUserIValue("MBEFORE_X");
   local by = frame:GetUserIValue("MBEFORE_Y");
 
-  if pos.x == bx and pos.y == by then
+  if pos.x == bx and pos.y == by and not forceUpdate then
     return
   else
     frame:SetUserValue("MBEFORE_X", pos.x);
@@ -315,6 +341,15 @@ function RADER_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
   local context = ui.CreateContextMenu("RADER_RBTN", addonName, 0, 0, 150, 100);
   ui.AddContextMenuItem(context, "Hide", "RADER_TOGGLE_FRAME()");
   ui.AddContextMenuItem(context, "Draw on minimap", "RADER_ENABLE_RADER_MINIMAP_MODE(true)");
+
+  --size
+  local subContextSize = ui.CreateContextMenu("SUBCONTEXT_SIZE", "", 0, 0, 0, 0);
+  ui.AddContextMenuItem(subContextSize, "310x230 (default)" , string.format("RADER_CHANGE_SIZE(%d, %d, true)", 310, 230));
+  for i = 1, 8 do
+    local size = i * 100;
+    ui.AddContextMenuItem(subContextSize, size.."x"..size , string.format("RADER_CHANGE_SIZE(%d, %d, true)", size, size));
+  end
+  ui.AddContextMenuItem(context, "Size {img white_right_arrow 18 18}", "", nil, 0, 1, subContextSize);
 
   --zoom
   local subContextZoom = ui.CreateContextMenu("SUBCONTEXT_ZOOM", "", 0, 0, 0, 0);
@@ -391,6 +426,7 @@ function RADER_END_DRAG()
   g.settings.position.y = g.frame:GetY();
   RADER_LOAD_USERDATA();
   g.settings.minimapMode = false;
+  RADER_CHANGE_SIZE();
   RADER_SAVE_SETTINGS();
 end
 
@@ -419,7 +455,15 @@ function RADER_PROCESS_COMMAND(command)
     return ui.MsgBox(msg,"","Nope")
   end
 
-  if cmd == "minimap" then
+  if cmd == "size" then
+    local w = tonumber(table.remove(command, 1));
+    local h = tonumber(table.remove(command, 1));
+    
+    if w and h then
+      RADER_CHANGE_SIZE(w, h, true);
+      return;
+    end
+  elseif cmd == "minimap" then
     RADER_ENABLE_RADER_MINIMAP_MODE(true)
     return
   elseif cmd == "on" then
