@@ -34,9 +34,15 @@ if not g.loaded then
     "party",
     "enemy",
     "boss",
+    "npc",
+    "clover"
   };
 
   g.layers = {};
+
+  g.design = {
+
+  };
 
   g.settings = {
     version = currentVersion,
@@ -106,11 +112,12 @@ function RADER_ON_INIT(addon, frame)
 
   addon:RegisterMsg("GAME_START_3SEC", "RADER_3SEC");
   --RADER_3SEC();
+  --ReserveScript("RADER_3SEC()", 0.5);
 end
 
 function RADER_3SEC()
   local frame = g.frame;
-    --再表示処理
+  --再表示処理
   if g.settings.enable then
     frame:ShowWindow(1);
   else
@@ -130,7 +137,7 @@ function RADER_CHANGE_ZOOM(percentage, save)
     percentage = g.settings.zoomRate;
     save = false;
   end
-  
+
   g.currentZoomRate = percentage;
   g.mapWidth = g.mapui:GetImageWidth() * (100 + percentage) / 100;
   g.mapHeight = g.mapui:GetImageHeight() * (100 + percentage) / 100;
@@ -167,6 +174,7 @@ function RADER_INIT_FRAME(frame)
   myself:EnableHitTest(0);
 
   local mapName = session.GetMapName();
+
   mapui:SetImage(mapName .. "_fog");
   myself:SetImage("minimap_leader");
   mapbg:SetImage(mapName .. "_fog");
@@ -182,7 +190,9 @@ function RADER_INIT_FRAME(frame)
   else
     RADER_CHANGE_ZOOM()
   end
+  
   RADER_UPDATE();
+  --
 end
 
 function RADER_ENABLE_RADER_MINIMAP_MODE(save)
@@ -237,7 +247,7 @@ end
 function RADER_CHANGE_MYSELF_ALPHA(alpha, save)
   local A = string.format("%02x", math.floor(alpha / 100 * 255));
   g.myself:SetColorTone(A.."FFFFFF");
-  
+
   --アルファ値を保存
   if save then
     g.settings.alpha.myself = alpha;
@@ -246,13 +256,13 @@ function RADER_CHANGE_MYSELF_ALPHA(alpha, save)
 end
 
 function RADER_CHANGE_SIZE(w, h, save)
-  
+
   if w == nil or h == nil then
     w = g.settings.width
     h = g.settings.height;
     save = false;
   end
-  
+
   local frame = g.frame;
   local myself = g.myself;
   frame:Resize(w, h);
@@ -264,7 +274,7 @@ function RADER_CHANGE_SIZE(w, h, save)
     g.settings.height = h;
     RADER_SAVE_SETTINGS();
   end
- end
+end
 
 
 function RADER_LOAD_USERDATA()
@@ -286,7 +296,7 @@ function RADER_UPDATE(forceUpdate)
   if ui.IsImageExist(mapName) == 0 then
     return;
   end
-  
+
   if g.settings.minimapMode and g.currentZoomRate ~= GET_MINIMAPSIZE() then
     RADER_ENABLE_RADER_MINIMAP_MODE(false);
   end
@@ -294,11 +304,21 @@ function RADER_UPDATE(forceUpdate)
   local w = g.mapWidth;
   local h = g.mapHeight;
 
-  g.mapui:Resize(w, h);
-  g.mapbg:Resize(w, h);
+  if g.mapui:GetWidth() ~= w or g.mapui:GetHeight() ~= h then
+    g.mapui:Resize(w, h);
+    g.mapbg:Resize(w, h);
+    for k, layer in pairs(g.layers) do
+      layer:Resize(w, h);
+    end
+  end
 
   --自キャラのポジションを取得
   local handle = session.GetMyHandle();
+
+  if not handle then 
+    CHAT_SYSTEM("cant get my handle");
+    return 1
+  end
   local pos = info.GetPositionInMap(handle, w, h);
 
   RADER_UPDATE_PARTY()
@@ -326,13 +346,13 @@ function RADER_UPDATE(forceUpdate)
 
   --マップ画像の位置を変更
   g.mapui:SetOffset(-miniX, - miniY);
-
   g.mapbg:SetOffset(-miniX, - miniY);
 
   for k, layer in pairs(g.layers) do
     layer:SetOffset(-miniX, - miniY);  
     --CHAT_SYSTEM("layer:"..k);
   end
+
   return 1;
 end
 
@@ -403,8 +423,6 @@ function RADER_UPDATE_PARTY()
   end
 end
 
-
-
 --表示非表示切り替え処理
 function RADER_TOGGLE_FRAME()
   if g.frame:IsVisible() == 0 then
@@ -442,6 +460,10 @@ function RADER_PROCESS_COMMAND(command)
     msg = msg.."/rader on/off{nl}";
     msg = msg.."表示/非表示切り替え{nl}";
     msg = msg.."{nl}";
+    msg = msg.."/rader minimap{nl}";
+    msg = msg.."レーダーを公式ミニマップに重ねて表示する{nl}";
+    msg = msg.."/rader size 数字w 数字h{nl}";
+    msg = msg.."幅w 高さhにサイズを変更{nl}";
     msg = msg.."/rader zoom 数字n{nl}";
     msg = msg.."n%の縮尺でミニマップを表示{nl}";
     msg = msg.."/rader zoom up{nl}";
@@ -458,7 +480,7 @@ function RADER_PROCESS_COMMAND(command)
   if cmd == "size" then
     local w = tonumber(table.remove(command, 1));
     local h = tonumber(table.remove(command, 1));
-    
+
     if w and h then
       RADER_CHANGE_SIZE(w, h, true);
       return;
@@ -510,9 +532,7 @@ function RADER_ON_MON_ENTER_SCENE(frame, msg, str, handle)
     return;
   end
 
-  --モンスター以外はチェックしない
-  RADER_CREATE_ICON(handle);
-
+  ReserveScript(string.format("RADER_CREATE_ICON(%d)", handle), 0.05);
 end
 
 function RADER_CREATE_ICON(handle)
@@ -530,42 +550,26 @@ function RADER_CREATE_ICON(handle)
 end
 
 function RADER_CREATE_MONSTERICON(handle, actor)
-  local layerName = "enemy";
   local monCls = GetClassByType("Monster", actor:GetType());
-  local color = "FF0000";
-
-  local targetInfo = info.GetTargetInfo(handle);
-
-  if info.IsNegativeRelation(handle) == 0 then
-    color = "FFFFFF";
-  end
-  --ターゲット不可オブジェクト、NPCは非表示
-  if targetInfo.TargetWindow == 0 then
-    return;
-  elseif monCls.MonRank == "Boss" then
-    layerName = "boss";
+  local design = RADER_SELECT_NPC_ICON_DESIGN(handle, actor, monCls);
+  
+  --非表示
+  if not design.visible then
+    return
   end
 
-  --フィルターチェック
-  if g.settings.blackList[monCls.ClassName] then
-    return;
-  end
-
-  local layer = g.layers[layerName];
+  local layer = g.layers[design.layerName];
   --ハンドル毎にアイコンを生成
   local monIcon = layer:GetChild("monster_"..handle);
 
   if monIcon == nil then
-    if monCls.MonRank == "Boss" then
-      monIcon = layer:CreateOrGetControl("picture", "monster_"..handle, 0, 0, 48, 48);
-    else
-      monIcon = layer:CreateOrGetControl("picture", "monster_"..handle, 0, 0, 16, 16);
-    end
+    monIcon = layer:CreateOrGetControl("picture", "monster_"..handle, 0, 0, design.w, design.h);
     tolua.cast(monIcon, "ui::CPicture");  
-    monIcon:SetImage("sugoidot");
-    monIcon:SetColorTone("FF"..color);
+    monIcon:SetImage(design.icon);
+    monIcon:SetColorTone(design.color);
     monIcon:SetEnableStretch(1);
     monIcon:SetUserValue("HANDLE", handle);
+    --monIcon:SetBlink(0.0, 1.0, 0xFF00FF00);
   else
     tolua.cast(monIcon, "ui::CPicture");
   end
@@ -573,6 +577,86 @@ function RADER_CREATE_MONSTERICON(handle, actor)
   monIcon:RunUpdateScript("RADER_UPDATE_POSITION")
 end
 
+function RADER_SELECT_NPC_ICON_DESIGN(handle, actor, monCls)
+  local visible = true;
+  local icon = "sugoidot";
+  local color = "FFFF0000";
+  local layerName = "enemy";
+  local blink = nil;
+  local w, h = 16, 16;
+
+  local targetInfo = info.GetTargetInfo(handle);
+
+  if info.IsNegativeRelation(handle) == 0 then
+    --非敵対NPCは白
+    color = "FFFFFFFF";
+    --あうしゅりね
+    if monCls.ClassName == "pcskill_wood_ausrine2" or monCls.ClassName == "pcskill_wood_ausrine" then
+      icon = "icon_cler_craveAusirine";
+      w, h = 36, 36;
+    end
+  else
+    --敵対NPC
+    if monCls.MonRank == "Boss" then
+      layerName = "boss";
+      w, h = 48, 48;
+    end
+  end
+  --ターゲット不可オブジェクト、NPCは非表示
+  if targetInfo.TargetWindow == 0 then
+    visible = false;
+  end
+
+  --フィルターチェック
+  if g.settings.blackList[monCls.ClassName] then
+    visible = false;
+  end
+  
+  --クローバーチェック
+  local clovers = RADER_CHECK_BUFF_LIST();
+  local buffCount = info.GetBuffCount(handle);
+  local find = false;
+
+  for i, clover in ipairs(clovers) do
+    if find then break end
+    for i = 0, buffCount - 1 do
+      local buff = info.GetBuffIndexed(handle, i);
+      if buff.buffID == clover.id then
+        if clover.checkFn ~= nil and not clover.checkFn(buff) then
+          --チェック関数が存在し、結果がfalseの場合何もしない
+        else
+          layerName = "clover";
+          icon = clover.icon;
+          color = clover.color;
+          w, h = clover.w, clover.h;
+          find = true;
+          break;
+        end
+      end
+    end
+  end
+  
+  return {
+    visible = visible,
+    icon = icon,
+    color = color,
+    layerName = layerName,
+    w = w,
+    h = h,
+    blink = blink
+  };
+end
+
+function RADER_CHECK_BUFF_LIST()
+  local result = {
+    --{ id = 8001, icon = "silver", color = "FFFFFF00", checkFn=nil, w=36, h=36}, --test
+    { id = 5028, icon = "silver", color = "FFFFFF00", w=36, h=36, checkFn=function(buff) return buff.arg2 == 1 end }, --金
+    { id = 5028, icon = "silver", color = "FFFFFFFF", w=36, h=36, checkFn=nil }, --銀
+    { id = 5079, icon = "sugoidot", color = "FF0000FF", w=24, h=24, checkFn=nil }, --蒼
+    { id = 5086, icon = "icon_state_medium", color = "FFFFFFFF", w=36, h=36, checkFn=nil }, --　赤
+  };
+  return result;
+end
 
 function RADER_CREATE_PARTYICON(handle, actor, partyMemberInfo)
   local layerName = "party";
@@ -694,3 +778,6 @@ function RADER_REMOVE_FILTER(className)
     g.settings.blackList[className] = false;
   end
 end
+
+
+
