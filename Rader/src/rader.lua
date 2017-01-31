@@ -35,7 +35,7 @@ if not g.loaded then
     "enemy",
     "boss",
     "npc",
-    "clover"
+    "highlight"
   };
 
   g.layers = {};
@@ -65,6 +65,7 @@ if not g.loaded then
       y = 400,
     },
     blackList = {},
+    highlight = {},
   };
 end
 
@@ -190,7 +191,7 @@ function RADER_INIT_FRAME(frame)
   else
     RADER_CHANGE_ZOOM()
   end
-  
+
   RADER_UPDATE();
   --
 end
@@ -474,10 +475,56 @@ function RADER_PROCESS_COMMAND(command)
     msg = msg.."/rader filter{nl}";
     msg = msg.."ターゲット中の敵をフィルター切り替え{nl}";
     msg = msg.."※すでに表示中の敵は表示されっぱなし";
+    msg = msg.."ターゲット中の敵をハイライト{nl}";
+    msg = msg.."/rader highlight{nl}";
+    msg = msg.."ターゲット中の敵をハイライト（色指定）{nl}";
+    msg = msg.."/rader highlight RGB{nl}";
+    msg = msg.."例：/rader highlight FF00FF{nl}";
+    msg = msg.."ターゲット中の敵をハイライト（色＆サイズ指定）{nl}";
+    msg = msg.."/rader highlight RGB 数字{nl}";
+    msg = msg.."例：/rader highlight FF00FF 34{nl}";
     return ui.MsgBox(msg,"","Nope")
   end
 
-  if cmd == "size" then
+  if cmd == "highlight" then
+    --ハイライト
+    local argNumber = #command;
+    local design = {
+      visible = true,
+      color = "FFFF00FF",
+      icon = "sugoidot",
+      w = 24,
+      h = 24,
+    }
+    if argNumber == 1 then
+      --色指定のみ
+      local arg1 = table.remove(command, 1);
+
+      if arg1 == "off" then
+        RADER_DISABLE_HIGHLIGHT();
+        return
+      elseif tonumber("0x"..arg1) then
+        design.color = "FF"..arg1;
+      end
+
+    elseif argNumber >= 2 then
+      local arg1 = table.remove(command, 1);
+      if tonumber("0x"..arg1) then
+        design.color = "FF"..arg1;
+        --色とアイコンサイズ指定
+        local size = tonumber(table.remove(command, 1));
+        design.w = size or 24;
+        design.h = size or 24;
+      end
+    end
+
+    --チェック
+    if design and design.w > 0 and design.w <= 64 then
+      RADER_SET_HIGHLIGHT_FOR_TARGET(design);
+      return;
+    end
+  elseif cmd == "size" then
+    --サイズ指定
     local w = tonumber(table.remove(command, 1));
     local h = tonumber(table.remove(command, 1));
 
@@ -486,6 +533,7 @@ function RADER_PROCESS_COMMAND(command)
       return;
     end
   elseif cmd == "minimap" then
+    --ミニマップモード
     RADER_ENABLE_RADER_MINIMAP_MODE(true)
     return
   elseif cmd == "on" then
@@ -552,7 +600,7 @@ end
 function RADER_CREATE_MONSTERICON(handle, actor)
   local monCls = GetClassByType("Monster", actor:GetType());
   local design = RADER_SELECT_NPC_ICON_DESIGN(handle, actor, monCls);
-  
+
   --非表示
   if not design.visible then
     return
@@ -607,11 +655,19 @@ function RADER_SELECT_NPC_ICON_DESIGN(handle, actor, monCls)
     visible = false;
   end
 
-  --フィルターチェック
+  --フィルター、ハイライトチェック
   if g.settings.blackList[monCls.ClassName] then
     visible = false;
+  elseif g.settings.highlight[monCls.ClassName] then
+    local design = g.settings.highlight[monCls.ClassName];
+    if design.visible then
+      layerName = "highlight";
+      icon = design.icon;
+      color = design.color;
+      w, h = design.w, design.h;
+    end
   end
-  
+
   --クローバーチェック
   local clovers = RADER_CHECK_BUFF_LIST();
   local buffCount = info.GetBuffCount(handle);
@@ -625,7 +681,7 @@ function RADER_SELECT_NPC_ICON_DESIGN(handle, actor, monCls)
         if clover.checkFn ~= nil and not clover.checkFn(buff) then
           --チェック関数が存在し、結果がfalseの場合何もしない
         else
-          layerName = "clover";
+          layerName = "highlight";
           icon = clover.icon;
           color = clover.color;
           w, h = clover.w, clover.h;
@@ -635,7 +691,7 @@ function RADER_SELECT_NPC_ICON_DESIGN(handle, actor, monCls)
       end
     end
   end
-  
+
   return {
     visible = visible,
     icon = icon,
@@ -714,21 +770,6 @@ function RADER_UPDATE_POSITION(frame)
   return 1;
 end
 
-function RADER_ADD_TARGET_IN_FILTER()
-  local handle = session.GetTargetHandle();
-  local actor = world.GetActor(handle);
-
-  if actor == nil then
-    return;
-  end
-
-  local monCls = GetClassByType("Monster", actor:GetType());
-  RADER_ADD_FILTER(monCls.ClassName);
-  RADER_SAVE_SETTINGS();
-  CHAT_SYSTEM(string.format("[%s] add %s in filter", addonName, monCls.Name));
-end
-
-
 function RADER_REMOVE_TARGET_FROM_FILTER()
   local handle = session.GetTargetHandle();
   local actor = world.GetActor(handle);
@@ -744,6 +785,67 @@ function RADER_REMOVE_TARGET_FROM_FILTER()
 end
 
 
+--ハイライトオフ
+function RADER_DISABLE_HIGHLIGHT()
+  local handle = session.GetTargetHandle();
+  local actor = world.GetActor(handle);
+
+  if actor == nil then
+    return;
+  end
+
+  local monCls = GetClassByType("Monster", actor:GetType());
+  local className = monCls.ClassName;
+
+  if g.settings.highlight[className] then
+    local highlight = g.settings.highlight[className];
+
+    if highlight.visible then
+      --ハイライトonの場合
+      highlight.visible = false;
+      RADER_SAVE_SETTINGS();
+      CHAT_SYSTEM(string.format("[%s] dosent highlight %s", addonName, monCls.Name));
+    end
+  end
+end
+
+
+--ハイライト設定
+function RADER_SET_HIGHLIGHT_FOR_TARGET(design)
+  local handle = session.GetTargetHandle();
+  local actor = world.GetActor(handle);
+
+  if actor == nil then
+    return;
+  end
+
+  local monCls = GetClassByType("Monster", actor:GetType());
+  local className = monCls.ClassName;
+
+  if not design then
+    --ハイライトのデフォルト（紫
+    design = {
+      visible = true,
+      color = "FFFF00FF",
+      icon = "sugoidot",
+      w = 24,
+      h = 24,
+    }
+  end
+
+  --ハイライトを保存する
+  g.settings.highlight[className] = {
+    visible = true,
+    color = design.color or "FFFF00FF",
+    icon = design.icon or "sugoidot",
+    w = design.w or 24,
+    h = design.h or 24,
+  }
+  RADER_SAVE_SETTINGS();
+  CHAT_SYSTEM(string.format("[%s] highlights %s", addonName, monCls.Name));
+end
+
+
 function RADER_TOGGLE_TARGET_IN_FILTER()
   local handle = session.GetTargetHandle();
   local actor = world.GetActor(handle);
@@ -756,28 +858,12 @@ function RADER_TOGGLE_TARGET_IN_FILTER()
   local className = monCls.ClassName;
 
   if not g.settings.blackList[className] then
-    RADER_ADD_FILTER(monCls.ClassName);
+    g.settings.blackList[className] = true;
     RADER_SAVE_SETTINGS();
     CHAT_SYSTEM(string.format("[%s] add %s in filter", addonName, monCls.Name));
   else
-    RADER_REMOVE_FILTER(monCls.ClassName);
+    g.settings.blackList[className] = false;
     RADER_SAVE_SETTINGS();
     CHAT_SYSTEM(string.format("[%s] remove %s in filter", addonName, monCls.Name));
   end
 end
-
-
-function RADER_ADD_FILTER(className)
-  if not g.settings.blackList[className] then
-    g.settings.blackList[className] = true;
-  end
-end
-
-function RADER_REMOVE_FILTER(className)
-  if g.settings.blackList[className] then
-    g.settings.blackList[className] = false;
-  end
-end
-
-
-
