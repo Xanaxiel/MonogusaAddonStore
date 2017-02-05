@@ -22,10 +22,10 @@ local acutil = require('acutil');
 if not g.loaded then
   --レイヤー重ね順指定
   g.layerNames = {
-    "party",
     "enemy",
     "boss",
     "npc",
+    "party",
     "highlight"
   };
 
@@ -47,7 +47,7 @@ if not g.loaded then
       myself = 70,
     },
 
-    partyIcon = "job", -- "job"か"dot"か"none"
+    partyIcon = "dot", -- "job"か"dot"か"none"
 
     --フレーム表示場所
     position = {
@@ -149,10 +149,13 @@ function RADER_CHANGE_ZOOM(percentage, save)
 
   local zoomText = "{@st48}"..math.floor(100+percentage) .. "%{/}";
   --自動ズームモードの場合
-  if RADER_GET_ZOOM_MODE() == "AUTO" then
+  local zoomMode = RADER_GET_ZOOM_MODE();
+  if zoomMode == "AUTO" then
     zoomText = "{@st48}Auto Zoom {/}"..zoomText;
   end
-
+ 
+  --ミニマップモードの場合ずーむを非表示
+  g.zoomRatioText:ShowWindow(zoomMode == "MINIMAP" and 0 or 1);
   g.zoomRatioText:SetText(zoomText);
 
   if save then
