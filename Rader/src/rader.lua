@@ -20,15 +20,6 @@ local acutil = require('acutil');
 
 --デフォルト設定
 if not g.loaded then
-  g.mapWidth = 0;
-  g.mapHeight = 0;
-  g.mapui = nil;
-  g.mapbg = nil;
-  g.myself  = nil;
-  g.enemyLayer = nil;
-  g.mapprop = nil;
-  g.currentZoomRate = 140;
-
   --レイヤー重ね順指定
   g.layerNames = {
     "party",
@@ -38,17 +29,14 @@ if not g.loaded then
     "highlight"
   };
 
-  g.layers = {};
-
-  g.design = {
-
-  };
-
   g.settings = {
     version = currentVersion,
     --有効/無効
     enable = true,
     minimapMode = false,
+    zoomMode = "MANUAL", --"AUTO" か "MANUAL"
+    --自動ズーム
+    autoZoomSize = 120, --10倍した値を使用
     --フレームサイズ
     width = 310,
     height = 230,
@@ -58,6 +46,8 @@ if not g.loaded then
       bg = 50,
       myself = 70,
     },
+
+    partyIcon = "job", -- "job"か"dot"か"none"
 
     --フレーム表示場所
     position = {
@@ -81,6 +71,11 @@ function RADER_ON_INIT(addon, frame)
   g.addon = addon;
   g.frame = frame;
   local mapName = session.GetMapName();
+  g.mapWidth = 0;
+  g.mapHeight = 0;
+  g.changeZoomRatio = false;
+
+  g.currentZoomRate = 140;
   g.mapprop = geMapTable.GetMapProp(mapName);
   g.mapCls = GetClass("Map", mapName);
 
@@ -133,15 +128,33 @@ function RADER_3SEC()
   frame:RunUpdateScript("RADER_UPDATE");
 end
 
+function RADER_GET_ZOOM_MODE()
+  if g.settings.minimapMode then
+    --ミニマップモードを優先
+    return "MINIMAP";
+  end
+  return g.settings.zoomMode;
+end
+
 function RADER_CHANGE_ZOOM(percentage, save)
   if not percentage then
     percentage = g.settings.zoomRate;
     save = false;
   end
 
+  g.changeZoomRatio = true;
   g.currentZoomRate = percentage;
   g.mapWidth = g.mapui:GetImageWidth() * (100 + percentage) / 100;
   g.mapHeight = g.mapui:GetImageHeight() * (100 + percentage) / 100;
+
+  local zoomText = "{@st48}"..math.floor(100+percentage) .. "%{/}";
+  --自動ズームモードの場合
+  if RADER_GET_ZOOM_MODE() == "AUTO" then
+    zoomText = "{@st48}Auto Zoom {/}"..zoomText;
+  end
+
+  g.zoomRatioText:SetText(zoomText);
+
   if save then
     g.settings.zoomRate = percentage;
     RADER_SAVE_SETTINGS()
@@ -184,10 +197,18 @@ function RADER_INIT_FRAME(frame)
   g.mapbg = mapbg;
   g.mapui = mapui;
 
+  g.zoomRatioText = frame:CreateOrGetControl("richtext", "zoomRatio", 0,0,0,0);
+  tolua.cast(g.zoomRatioText, "ui::CRichText");
+  g.zoomRatioText:SetGravity(ui.RIGHT, ui.TOP);
+
   RADER_CHANGE_SIZE(w, h, false)
   RADER_LOAD_USERDATA();
-  if g.settings.minimapMode then
+
+  local zoomMode = RADER_GET_ZOOM_MODE();
+  if "MINIMAP" == zoomMode then
     RADER_ENABLE_RADER_MINIMAP_MODE(true);
+  elseif "AUTO" == zoomMode then
+    RADER_AUTO_ZOOM();
   else
     RADER_CHANGE_ZOOM()
   end
@@ -219,14 +240,20 @@ end
 
 --レイヤー一覧を初期化
 function RADER_INIT_LAYERS(frame)
+  g.layers = {};
   local layers = frame:CreateOrGetControl("groupbox", "layers", 0, 0, 4096, 2048);
+  tolua.cast(layers, "ui::CGroupBox");
+  g.layersBox = layers;
   layers:SetSkinName("none");
   layers:EnableHitTest(0);
+  layers:EnableScrollBar(0);
 
   for i, layerName in ipairs(g.layerNames) do
     local layer = layers:CreateOrGetControl("groupbox", layerName.."Layer", 0, 0, 4096, 2048);
+    tolua.cast(layer, "ui::CGroupBox");
     layer:SetSkinName("none");
     layer:EnableHitTest(0);
+    layer:EnableScrollBar(0);
     g.layers[layerName] = layer;
   end
 
@@ -267,6 +294,11 @@ function RADER_CHANGE_SIZE(w, h, save)
   local frame = g.frame;
   local myself = g.myself;
   frame:Resize(w, h);
+
+  if RADER_GET_ZOOM_MODE() == "AUTO" then
+    RADER_AUTO_ZOOM()
+  end
+
   --自キャラを中央揃え
   myself:SetOffset(frame:GetWidth() / 2 - myself:GetImageWidth() / 2 , frame:GetHeight() / 2 - myself:GetImageHeight() / 2);
 
@@ -305,9 +337,11 @@ function RADER_UPDATE(forceUpdate)
   local w = g.mapWidth;
   local h = g.mapHeight;
 
-  if g.mapui:GetWidth() ~= w or g.mapui:GetHeight() ~= h then
+  if g.changeZoomRatio then
+    g.changeZoomRatio = false;
     g.mapui:Resize(w, h);
     g.mapbg:Resize(w, h);
+    g.layersBox:Resize(w, h);
     for k, layer in pairs(g.layers) do
       layer:Resize(w, h);
     end
@@ -363,6 +397,14 @@ function RADER_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
   ui.AddContextMenuItem(context, "Hide", "RADER_TOGGLE_FRAME()");
   ui.AddContextMenuItem(context, "Draw on minimap", "RADER_ENABLE_RADER_MINIMAP_MODE(true)");
 
+  ui.AddContextMenuItem(context, "Toggle Auto Zoom", "RADER_TOGGLE_AUTO_ZOOM(true)");
+
+  local subContextParty = ui.CreateContextMenu("SUBCONTEXT_SIZE", "", 0, 0, 0, 0);
+  ui.AddContextMenuItem(subContextParty, "job" , 'RADER_CHANGE_PARTY_ICON("job")');
+  ui.AddContextMenuItem(subContextParty, "dot" , 'RADER_CHANGE_PARTY_ICON("dot")');
+  ui.AddContextMenuItem(subContextParty, "none" , 'RADER_CHANGE_PARTY_ICON("none")');
+  ui.AddContextMenuItem(context, "Party {img white_right_arrow 18 18}", "", nil, 0, 1, subContextParty);
+
   --size
   local subContextSize = ui.CreateContextMenu("SUBCONTEXT_SIZE", "", 0, 0, 0, 0);
   ui.AddContextMenuItem(subContextSize, "310x230 (default)" , string.format("RADER_CHANGE_SIZE(%d, %d, true)", 310, 230));
@@ -417,7 +459,6 @@ function RADER_UPDATE_PARTY()
           if actor ~= nil then
             RADER_CREATE_PARTYICON(handle, actor, partyMemberInfo);
           end
-
         end
       end
     end
@@ -461,6 +502,8 @@ function RADER_PROCESS_COMMAND(command)
     msg = msg.."/rader on/off{nl}";
     msg = msg.."表示/非表示切り替え{nl}";
     msg = msg.."{nl}";
+    msg = msg.."/rader party job/dot/none{nl}"
+    msg = msg.."パーティの表示アイコンを変更する{nl}"
     msg = msg.."/rader minimap{nl}";
     msg = msg.."レーダーを公式ミニマップに重ねて表示する{nl}";
     msg = msg.."/rader size 数字w 数字h{nl}";
@@ -471,6 +514,8 @@ function RADER_PROCESS_COMMAND(command)
     msg = msg.."10%拡大{nl}";
     msg = msg.."/rader zoom down{nl}";
     msg = msg.."10%縮小{nl}";
+    msg = msg.."/rader autozoom on/off{nl}";
+    msg = msg.."自動ズーム on/off{nl}"
     msg = msg.."{nl}";
     msg = msg.."/rader filter{nl}";
     msg = msg.."ターゲット中の敵をフィルター切り替え{nl}";
@@ -486,7 +531,33 @@ function RADER_PROCESS_COMMAND(command)
     return ui.MsgBox(msg,"","Nope")
   end
 
-  if cmd == "highlight" then
+  if cmd == "party" then
+    local icon = string.lower(table.remove(command, 1));
+
+    if "job" == icon or "dot" == icon or "none" == icon then
+      RADER_CHANGE_PARTY_ICON(icon);
+      CHAT_SYSTEM(string.format("[%s] party icon mode changed", addonName));
+      return;
+    end
+  elseif cmd == "autozoom" then
+    local arg1 = string.lower(table.remove(command, 1));
+
+    if arg1 == "on" then
+      RADER_AUTO_ZOOM(true);
+      return
+    elseif arg1 == "off" then
+      g.settings.zoomMode = "MANUAL";
+      RADER_CHANGE_ZOOM(g.settings.zoomRate, true);
+      return
+    elseif tonumber(arg1) then
+      local zoomRatio = tonumber(arg1);
+      if zoomRatio >= 10 and zoomRatio <= 500 then
+        g.settings.autoZoomSize = zoomRatio;
+        RADER_AUTO_ZOOM(true);
+        return;
+      end
+    end
+  elseif cmd == "highlight" then
     --ハイライト
     local argNumber = #command;
     local design = {
@@ -648,6 +719,8 @@ function RADER_SELECT_NPC_ICON_DESIGN(handle, actor, monCls)
     if monCls.MonRank == "Boss" then
       layerName = "boss";
       w, h = 48, 48;
+    elseif monCls.Faction == "RootCrystal" then
+      color = "FF5555FF";
     end
   end
   --ターゲット不可オブジェクト、NPCは非表示
@@ -724,14 +797,35 @@ function RADER_CREATE_PARTYICON(handle, actor, partyMemberInfo)
   if monIcon == nil then
     monIcon = layer:CreateOrGetControl("picture", "party_"..handle, 0, 0, 48, 48);
     tolua.cast(monIcon, "ui::CPicture");
-    local icon = GET_JOB_ICON(partyMemberInfo:GetIconInfo().job)
+    local icon = "sugoidot"
     monIcon:SetImage(icon);
     monIcon:SetEnableStretch(1);
-    monIcon:SetColorTone("FFFFFFFF");
     monIcon:SetUserValue("HANDLE", handle);
+    monIcon:SetUserValue("ICON", "init");
   else
     tolua.cast(monIcon, "ui::CPicture");
   end
+
+  if monIcon:GetUserValue("ICON") ~= g.settings.partyIcon then
+    if g.settings.partyIcon == "job" then
+      icon = GET_JOB_ICON(partyMemberInfo:GetIconInfo().job);
+      monIcon:Resize(48, 48);
+      monIcon:SetColorTone("FFFFFFFF");
+      monIcon:SetUserValue("ICON", g.settings.partyIcon);
+    elseif g.settings.partyIcon == "none" then
+      monIcon:Resize(16, 16);
+      icon = "sugoidot";
+      monIcon:SetColorTone("00FFFFFF");
+      monIcon:SetUserValue("ICON", g.settings.partyIcon);
+    else
+      monIcon:Resize(16, 16);
+      icon = "sugoidot";
+      monIcon:SetColorTone("FF7fff7f");
+      monIcon:SetUserValue("ICON", "dot");
+    end
+    monIcon:SetImage(icon);
+  end
+
   monIcon:ShowWindow(1);
   monIcon:RunUpdateScript("RADER_UPDATE_POSITION")
 end
@@ -866,4 +960,42 @@ function RADER_TOGGLE_TARGET_IN_FILTER()
     RADER_SAVE_SETTINGS();
     CHAT_SYSTEM(string.format("[%s] remove %s in filter", addonName, monCls.Name));
   end
+end
+
+function RADER_AUTO_ZOOM(save)
+  g.settings.zoomMode = "AUTO";
+  local zoomSize = g.settings.autoZoomSize * 10;
+  local mapprop = g.mapprop;
+
+  --1だけ動かしたマップの位置
+  local w = g.mapui:GetImageWidth();
+  local h = g.mapui:GetImageHeight();
+  local pos1 = mapprop:WorldPosToMinimapPos(0, 0, w, h);
+  local pos2 = mapprop:WorldPosToMinimapPos(1, 0, w, h);
+  --距離1あたりのピクセル
+  local pix = pos2.x - pos1.x;
+  --距離100で見える範囲をフレームの長さに合わせた場合
+  local zoomRate = g.frame:GetWidth() / (pix * zoomSize);
+  local percentage = zoomRate * 100 - 100;
+  --CHAT_SYSTEM("percentage"..percentage);
+  RADER_CHANGE_ZOOM(percentage, false)
+
+  if save then
+    RADER_SAVE_SETTINGS();
+    CHAT_SYSTEM(string.format("[%s] enable auto zoom mode", addonName));
+  end
+end
+
+function RADER_TOGGLE_AUTO_ZOOM(save)
+  local zoomMode = RADER_GET_ZOOM_MODE();
+  if "AUTO" == zoomMode then
+    g.settings.zoomMode = "MANUAL";
+    RADER_CHANGE_ZOOM(g.settings.zoomRate, true);
+  elseif "MANUAL" == zoomMode then
+    RADER_AUTO_ZOOM(save)
+  end
+end
+
+function RADER_CHANGE_PARTY_ICON(icon)
+  g.settings.partyIcon = icon;
 end

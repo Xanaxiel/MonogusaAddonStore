@@ -7,6 +7,9 @@
 #ミニマップモード 
 /rader minimap  
 レーダーをミニマップに重ねて表示する  
+#パーティアイコン変更 
+/rader party job/dot/none  
+パーティの表示アイコンを変更する  
 # サイズ変更
 /rader size 数字w 数字h  
 幅w 高さhにサイズを変更  
@@ -17,6 +20,8 @@ n%の縮尺でミニマップを表示
 10%拡大  
 /rader zoom down  
 10%縮小  
+/rader autozoom on/off
+自動ズーム on/off  
 # フィルター機能
 /rader filter  
 ターゲット中の敵をフィルター切り替え  
