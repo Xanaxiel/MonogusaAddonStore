@@ -1,19 +1,5 @@
 [
 	{
-		"name" : "MutekiAttitude",
-		"file" : "mutekiattitude",
-		"extension" : "ipf",
-		"fileVersion" : "v1.1.0",
-		"releaseTag" : "mutekiattitude",
-		"unicode" : "⛄",
-		"description" : "Add-on that highlights buffs becoming invincible.",
-		"tags" : [
-			"ui",
-			"ausirine",
-			"buff"
-		]
-	},
-	{
 		"name" : "IndunPlus",
 		"file" : "indunplus",
 		"extension" : "ipf",
@@ -38,34 +24,6 @@
 		"description" : "Add-on that allows you to open the market and search items by right-clicking",
 		"tags" : [
 			"market"
-		]
-	},
-	{
-		"name" : "Clover Finder",
-		"file" : "cloverfinder",
-		"extension" : "ipf",
-		"fileVersion" : "v1.0.1",
-		"releaseTag" : "cloverfinder",
-		"unicode" : "⛄",
-		"description" : "When bonus enemy found, this addon Inform by icon and chat for user and party member automatically.",
-		"tags" : [
-			"ui",
-			"bonus enemy",
-			"clover"
-		]
-	},
-	{
-		"name" : "Boss Spotter",
-		"file" : "bossspotter",
-		"extension" : "ipf",
-		"fileVersion" : "v1.0.0",
-		"releaseTag" : "bossspotter",
-		"unicode" : "⛄",
-		"description" : "This add-on will automatically report for party or guild where it was when you found the boss.",
-		"tags" : [
-			"ui",
-			"field boss",
-			"world boss"
 		]
 	},
 	{
@@ -94,19 +52,6 @@
 		]
 	},
 	{
-		"name" : "Show Skill",
-		"file" : "showskill",
-		"extension" : "ipf",
-		"fileVersion" : "v0.9.1",
-		"releaseTag" : "showskill",
-		"unicode" : "⛄",
-		"description" : "Add-on that show skill you are using by gauge and name. this addon is beta version.",
-		"tags" : [
-			"ui",
-			"skill"
-		]
-	},
-	{
 		"name" : "Camp Warp",
 		"file" : "campwarp",
 		"extension" : "ipf",
@@ -130,19 +75,6 @@
 		"tags" : [
 			"ui",
 			"timer"
-		]
-	},
-	{
-		"name" : "Rader",
-		"file" : "rader",
-		"extension" : "ipf",
-		"fileVersion" : "v1.4.1",
-		"releaseTag" : "rader",
-		"unicode" : "⛄",
-		"description" : "show enemy position on minimap.dont mind the misspelling",
-		"tags" : [
-			"ui",
-			"radar"
 		]
 	}
 ]
