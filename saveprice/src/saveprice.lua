@@ -50,6 +50,7 @@ function SAVEPRICE_ON_INIT(addon, frame)
   if not g.hooked then
     acutil.setupHook(ON_MARKET_MINMAX_INFO_HOOKED, 'ON_MARKET_MINMAX_INFO');
     acutil.setupHook(ON_MARKET_REGISTER_HOOKED, 'ON_MARKET_REGISTER');
+    g.hooked = true;
   end
   
   --設定ファイル保存処理
