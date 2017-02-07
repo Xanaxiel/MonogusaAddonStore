@@ -81,7 +81,7 @@
 		"name" : "Save Price",
 		"file" : "saveprice",
 		"extension" : "ipf",
-		"fileVersion" : "v1.0.0",
+		"fileVersion" : "v1.0.1",
 		"releaseTag" : "saveprice",
 		"unicode" : "⛄",
 		"description" : "マーケット出品時の価格を記録し、次回出品時の価格に反映します。",
