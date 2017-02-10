@@ -158,7 +158,7 @@ end
 --コンテキストメニュー表示処理
 function DPKHELPER_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
   local context = ui.CreateContextMenu("DPKHELPER_RBTN", addonName, 0, 0, 150, 100);
-  
+
   if g.settings.start then
     ui.AddContextMenuItem(context, "Reset", "DPKHELPER_RESET_COUNT()");
     ui.AddContextMenuItem(context, "Stop", "DPKHELPER_STOP_COUNT()");
@@ -198,7 +198,12 @@ function DPKHELPER_PROCESS_COMMAND(command)
   if #command > 0 then
     cmd = string.lower(table.remove(command, 1));
   else
-    local msg = "ヘルプメッセージなど"
+    local msg = "/dpkh start{nl}"
+    msg = msg.."計測開始{nl}";
+    msg = msg.."/dpkh reset{nl}";
+    msg = msg.."カウントリセット{nl}";
+    msg = msg.."/dpkh stop{nl}";
+    msg = msg.."計測終了{nl}";
     return ui.MsgBox(msg,"","Nope")
   end
 
@@ -293,7 +298,7 @@ function DPKHELPER_ON_MON_ENTER_SCENE(frame, msg, str, handle)
   local actor = world.GetActor(handle);
   if actor and actor:GetObjType() == GT_MONSTER then
     local monCls = GetClassByType("Monster", actor:GetType());
-    
+
     if not g.settings.enemyList[monCls.ClassName] and monCls.Faction ~= "RootCrystal" then
       local wiki = GetWikiByName(monCls.Journal);
       if wiki then
