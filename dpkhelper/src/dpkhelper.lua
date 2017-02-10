@@ -311,7 +311,8 @@ function DPKHELPER_ADD_MON_INTO_LIST(handle)
   if actor and actor:GetObjType() == GT_MONSTER then
     local monCls = GetClassByType("Monster", actor:GetType());
 
-    if not g.settings.enemyList[monCls.ClassName] and monCls.Faction ~= "RootCrystal" then
+    --敵対的
+    if not g.settings.enemyList[monCls.ClassName] and monCls.Faction ~= "RootCrystal" and info.IsNegativeRelation(handle) ~= 0 then
       local wiki = GetWikiByName(monCls.Journal);
       if wiki then
         --キル数とWikiのキル数を保存
