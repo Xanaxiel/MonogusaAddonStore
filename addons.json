@@ -93,7 +93,7 @@
 		"name" : "DPK Helper",
 		"file" : "dpkhelper",
 		"extension" : "ipf",
-		"fileVersion" : "v0.1.0",
+		"fileVersion" : "v0.2.0",
 		"releaseTag" : "dpkhelper",
 		"unicode" : "⛄",
 		"description" : "DPK狩り支援のため、討伐数を計測するアドオン（ソロ用）。α版",
