@@ -222,6 +222,14 @@ function DPKHELPER_START_COUNT()
   --敵リスト初期化処理
   g.settings.start = true;
   DPKHELPER_INIT_ENEMY_LIST();
+  
+  --近くにいる敵をリストに入れる
+  local fndList, fndCnt = SelectObject(GetMyPCObject(), 800, "ENEMY")
+  for i, enemy in ipairs(fndList) do
+    local handle = GetHandle(enemy);
+    DPKHELPER_ADD_MON_INTO_LIST(handle)
+  end
+
   DPKHELPER_INIT_ENEMYTEXT();
   CHAT_SYSTEM(string.format("[%s] Count Start", addonName));
 end
@@ -286,6 +294,10 @@ function DPKHELPER_WATCH_WIKI_UPDATE()
 end
 
 function DPKHELPER_ON_MON_ENTER_SCENE(frame, msg, str, handle)
+  DPKHELPER_ADD_MON_INTO_LIST(handle);
+end
+
+function DPKHELPER_ADD_MON_INTO_LIST(handle)
   if not g.settings.start then
     return;
   end
@@ -311,4 +323,3 @@ function DPKHELPER_ON_MON_ENTER_SCENE(frame, msg, str, handle)
     end
   end
 end
-
