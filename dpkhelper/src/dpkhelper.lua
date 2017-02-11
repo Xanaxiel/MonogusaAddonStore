@@ -137,8 +137,16 @@ function DPKHELPER_INIT_ENEMYTEXT()
 
   for k, v in pairs(g.settings.enemyList) do
     local monCls = GetClass("Monster", k);
-    local monName = frame:CreateOrGetControl("richtext", "monName_"..k, 5, y, 0, 0);
-    local monCount = frame:CreateOrGetControl("richtext", "monCount_"..k, 5, y, 0, 0);
+    local monGroup = frame:CreateOrGetControl("groupbox", "monGroup_"..k, 0, y, 0, 0);
+    tolua.cast(monGroup, "ui::CGroupBox");
+    monGroup:SetSkinName("none");
+    monGroup:EnableHitTest(1);
+    monGroup:SetUserValue("MONCLS", k);
+    monGroup:SetEventScript(ui.RBUTTONDOWN, "DPKHELPER_ENEMY_CONTEXT_MENU");
+    monGroup:SetEventScriptArgString(ui.RBUTTONDOWN, k);
+
+    local monName = monGroup:CreateOrGetControl("richtext", "monName_"..k, 5, 0, 0, 0);
+    local monCount = monGroup:CreateOrGetControl("richtext", "monCount_"..k, 5, 0, 0, 0);
     tolua.cast(monName, "ui::CRichText");
     tolua.cast(monCount, "ui::CRichText");
 
@@ -150,13 +158,54 @@ function DPKHELPER_INIT_ENEMYTEXT()
     maxWidth = maxWidth < monName:GetWidth() and monName:GetWidth() or maxWidth;
     y = y + monName:GetHeight();
   end
+
+  --時刻
+  local time = frame:CreateOrGetControl("richtext", "time", 5, y, 0, 0);
+  time:SetGravity(ui.RIGHT, ui.TOP);
+  time:EnableHitTest(0);
+  time:RunUpdateScript("DPKHELPER_UPDATE_TIME", 1);
+  DPKHELPER_UPDATE_TIME();
+  y = y + time:GetHeight();
+
+  --サイズあわせ
   local h = y + 10;
   local w = maxWidth + 50;
+
+  for k, v in pairs(g.settings.enemyList) do
+    local monGroup = GET_CHILD(frame, "monGroup_"..k, "ui::CGroupBox");
+    local monName = GET_CHILD(monGroup, "monName_"..k, "ui::CRichText");
+    monGroup:Resize(maxWidth + 50, monName:GetHeight());
+  end
+
   frame:Resize(w, h);
 end
 
+
+function DPKHELPER_UPDATE_TIME()
+  if g.settings.start then
+    local color = "FFFFFF";
+    --計測中のチャンネルではない場合灰色
+    if g.settings.mapName ~= session.GetMapName() or g.settings.channel ~= session.loginInfo.GetChannel() then
+      color = "6666FF"
+    end
+
+    local time = GET_CHILD(g.frame, "time", "ui::CRichText");
+    g.settings.startTime = g.settings.startTime or os.time()
+    local totalSec = os.time() - g.settings.startTime
+    local hour = math.floor(totalSec / 3600)
+    local min = math.floor(totalSec % 3600 / 60)
+    local sec = math.floor(totalSec % 60)
+    
+    local timeText = string.format("{@st48}{#%s}%02d:%02d:%02d{/}{/}", color,  hour, min, sec);
+    time:SetText(timeText);
+    return 1;
+  end
+
+  return 0;  
+end
+
 --コンテキストメニュー表示処理
-function DPKHELPER_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
+function DPKHELPER_CONTEXT_MENU(frame, msg, argStr, argNum)
   local context = ui.CreateContextMenu("DPKHELPER_RBTN", addonName, 0, 0, 150, 100);
 
   if g.settings.start then
@@ -168,6 +217,16 @@ function DPKHELPER_CONTEXT_MENU(frame, msg, clickedGroupName, argNum)
   context:Resize(150, context:GetHeight());
   ui.OpenContextMenu(context);
 end
+
+function DPKHELPER_ENEMY_CONTEXT_MENU(frame, msg, argStr, argNum)
+  local className = argStr;
+  local monCls = GetClass("Monster", className);
+  local context = ui.CreateContextMenu("DPKHELPER_RBTN", monCls.Name, 0, 0, 150, 100);
+  ui.AddContextMenuItem(context, "Reset　Count", string.format('DPKHELPER_RESET_COUNT_BY_CLASSNAME("%s")', className));
+  context:Resize(150, context:GetHeight());
+  ui.OpenContextMenu(context);
+end
+
 
 --表示非表示切り替え処理
 function DPKHELPER_TOGGLE_FRAME()
@@ -222,7 +281,7 @@ function DPKHELPER_START_COUNT()
   --敵リスト初期化処理
   g.settings.start = true;
   DPKHELPER_INIT_ENEMY_LIST();
-  
+
   --近くにいる敵をリストに入れる
   local fndList, fndCnt = SelectObject(GetMyPCObject(), 800, "ENEMY")
   for i, enemy in ipairs(fndList) do
@@ -246,10 +305,25 @@ function DPKHELPER_RESET_COUNT()
   --敵リスト初期化処理
   for k, v in pairs(g.settings.enemyList) do
     v.count = 0;
-    local monCount = GET_CHILD(g.frame, "monCount_"..k, "ui::CRichText");
+    local gbox = GET_CHILD(g.frame, "monGroup_"..k, "ui::CGroupBox");
+    local monCount = GET_CHILD(gbox, "monCount_"..k, "ui::CRichText");
     monCount:SetText("{@st48}"..v.count.."{/}");
   end
+
   CHAT_SYSTEM(string.format("[%s] Count Reset", addonName));
+end
+
+function DPKHELPER_RESET_COUNT_BY_CLASSNAME(className)
+  --敵リスト初期化処理
+  if g.settings.enemyList[className] then
+    local v = g.settings.enemyList[className]
+    local monCls = GetClass("Monster", className);
+    v.count = 0;
+    local gbox = GET_CHILD(g.frame, "monGroup_"..className, "ui::CGroupBox");
+    local monCount = GET_CHILD(gbox, "monCount_"..className, "ui::CRichText");
+    monCount:SetText("{@st48}"..v.count.."{/}");
+    CHAT_SYSTEM(string.format("[%s] %s Count Reset", addonName, monCls.Name));
+  end
 end
 
 --敵リスト初期化処理
@@ -257,6 +331,7 @@ function DPKHELPER_INIT_ENEMY_LIST()
   g.settings.enemyList = {};
   g.settings.mapName = session.GetMapName();
   g.settings.channel = session.loginInfo.GetChannel();
+  g.settings.startTime = os.time();
   DPKHELPER_SAVE_SETTINGS()
 end
 
@@ -280,7 +355,8 @@ function DPKHELPER_WATCH_WIKI_UPDATE()
       if g.settings.mapName == session.GetMapName() and g.settings.channel == session.loginInfo.GetChannel() then
         local diff = wikiCount - v.wikiCount;
         v.count = v.count + diff;
-        local monCount = GET_CHILD(frame, "monCount_"..k, "ui::CRichText");
+        local gbox = GET_CHILD(g.frame, "monGroup_"..k, "ui::CGroupBox");
+        local monCount = GET_CHILD(gbox, "monCount_"..k, "ui::CRichText");
         monCount:SetText("{@st48}"..v.count.."{/}");
       end
       --計測中のチャンネルと異なる場合、冒険日誌のカウントのみ更新する
