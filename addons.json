@@ -102,5 +102,17 @@
 			"dpk",
 			"count"
 		]
+	},
+	{
+		"name" : "Sell Time",
+		"file" : "selltime",
+		"extension" : "ipf",
+		"fileVersion" : "v1.0.0",
+		"releaseTag" : "selltime",
+		"unicode" : "⛄",
+		"description" : "マーケット出品時のデフォルト時間を変更",
+		"tags" : [
+			"market"
+		]
 	}
 ]
