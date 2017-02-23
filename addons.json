@@ -107,7 +107,7 @@
 		"name" : "Sell Time",
 		"file" : "selltime",
 		"extension" : "ipf",
-		"fileVersion" : "v1.0.0",
+		"fileVersion" : "v1.0.1",
 		"releaseTag" : "selltime",
 		"unicode" : "⛄",
 		"description" : "マーケット出品時のデフォルト時間を変更",

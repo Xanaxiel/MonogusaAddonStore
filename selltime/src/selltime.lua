@@ -105,7 +105,6 @@ function MARKET_SELL_OPEN_HOOKED(frame)
 	droplist:ClearItems();
 
 	local defaultTime = g.settings.defaultTime;
-  CHAT_SYSTEM(defaultTime);
 	local cnt = GetMarketTimeCount();
 	for i = 0 , cnt - 1 do
 		local time, free = GetMarketTimeAndTP(i);
