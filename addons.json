@@ -114,5 +114,20 @@
 		"tags" : [
 			"market"
 		]
+	},
+	{
+		"name" : "Muteki2",
+		"file" : "muteki2",
+		"extension" : "ipf",
+		"fileVersion" : "v0.1.0",
+		"releaseTag" : "muteki2",
+		"unicode" : "⛄",
+		"description" : "無敵像アドオンの作り直しバージョン。無敵像、チャッパーリション、グラスモール、リトリートなどの重要バフを強調表示",
+		"tags" : [
+			"ui",
+			"buff",
+			"ausirine",
+			"retreat"
+		]
 	}
 ]
