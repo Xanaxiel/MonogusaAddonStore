@@ -23,6 +23,7 @@ if not g.loaded then
   g.settings = {
     --有効/無効
     enable = true,
+    mode = "fixed", --"FIXED" or "TRACE"
     --フレーム表示場所
     position = {
       lock = false;
@@ -88,6 +89,31 @@ function MUTEKI2_ON_INIT(addon, frame)
   --Moveではうまくいかないので、OffSetを使用する…
   frame:Move(0, 0);
   frame:SetOffset(g.settings.position.x, g.settings.position.y);
+  
+  ReserveScript("MUTEKI2_CHANGE_MODE()", 1.0);
+end
+
+
+function MUTEKI2_CHANGE_MODE(mode)
+  local frame = g.frame;
+  if not mode then
+    mode = g.settings.mode;
+  end
+  
+  mode = string.lower(mode);
+
+  if mode == "trace" then
+    local handle = session.GetMyHandle();
+    local actor = world.GetActor(handle)
+    FRAME_AUTO_POS_TO_OBJ(frame, handle, - frame:GetWidth() / 2, -100, 3, 1);
+  else
+    --Moveではうまくいかないので、OffSetを使用する…
+    frame:Move(0, 0);
+    frame:SetOffset(g.settings.position.x, g.settings.position.y);
+    frame:StopUpdateScript("_FRAME_AUTOPOS");
+  end
+
+  MUTEKI2_SAVE_SETTINGS();
 end
 
 function MUTEKI2_INIT_FRAME(frame)
@@ -251,10 +277,7 @@ end
 function MUTEKI2_TEST()
   local handle = session.GetMyHandle();
   local actor = world.GetActor(handle)
-  --effect.AddActorEffectByOffset(actor, "F_sys_TPBOX_great_300", handle, 0)
-  effect.PlayActorEffect(actor, "F_sys_TPBOX_great_300", "None", 1.0, 6.0);
-  --effect.AddActorEffectByOffset(actor, "F_sys_TPBOX_great_200", handle, 0)
-  --imcSound.PlaySoundEvent("sys_tp_box_4");
+  FRAME_AUTO_POS_TO_OBJ(g.frame, handle, - g.frame:GetWidth() / 2, -100, 3, 1);
 end
 
 --バフ取得時処理
@@ -265,9 +288,10 @@ function MUTEKI2_UPDATE_BUFF(frame, msg, argStr, argNum)
 
   if buffList[argNum] then
     local func = buffList[argNum][msg];
+    local label = buffList[argNum]["label"];
     local frame = buffList[argNum]["frame"];
     if func then
-      func(buff, frame);
+      func(buff, frame, label);
     end
   end
 end
@@ -281,20 +305,23 @@ end
 function MUTEKI2_GET_BUFF_LIST()
   return {
     --アウシュリネ
-    [229] = {frame = g.gauge.ausirine, BUFF_ADD = MUTEKI2_ADD_AUSIRINE_BUFF, BUFF_UPDATE = MUTEKI2_ADD_AUSIRINE_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_GAUGE_BUFF},
+    [229] = {label = "Ausirine", frame = g.gauge.ausirine, BUFF_ADD = MUTEKI2_ADD_AUSIRINE_BUFF, BUFF_UPDATE = MUTEKI2_ADD_AUSIRINE_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_GAUGE_BUFF},
     --グラスモール
-    [4506] = {frame = g.gauge.potion, BUFF_ADD = MUTEKI2_ADD_POTION_BUFF, BUFF_UPDATE = MUTEKI2_ADD_POTION_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_GAUGE_BUFF},
+    [4506] = {label = "Grass Maul", frame = g.gauge.potion, BUFF_ADD = MUTEKI2_ADD_POTION_BUFF, BUFF_UPDATE = MUTEKI2_ADD_POTION_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_GAUGE_BUFF},
     --チャッパー
-    [4508] = {frame = g.gauge.potion, BUFF_ADD = MUTEKI2_ADD_POTION_BUFF, BUFF_UPDATE = MUTEKI2_ADD_POTION_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_GAUGE_BUFF},
+    [4508] = {label = "Chapparition", frame = g.gauge.potion, BUFF_ADD = MUTEKI2_ADD_POTION_BUFF, BUFF_UPDATE = MUTEKI2_ADD_POTION_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_GAUGE_BUFF},
     --リトリート
-    [6020] = {frame = g.gauge.retreat, BUFF_ADD = MUTEKI2_ADD_GAUGE_BUFF, BUFF_UPDATE = MUTEKI2_ADD_GAUGE_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_GAUGE_BUFF},
+    [6020] = {label = "Retreat", frame = g.gauge.retreat, BUFF_ADD = MUTEKI2_ADD_GAUGE_BUFF, BUFF_UPDATE = MUTEKI2_ADD_GAUGE_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_GAUGE_BUFF},
+    --マカンダル
+    [104] = {label = "Mackangdal", frame = g.gauge.retreat, BUFF_ADD = MUTEKI2_ADD_GAUGE_BUFF, BUFF_UPDATE = MUTEKI2_ADD_GAUGE_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_GAUGE_BUFF},
+
     --メルスティス
-    [3022] = {frame = nil, BUFF_ADD = MUTEKI2_ADD_MELSTIS, BUFF_UPDATE = MUTEKI2_ADD_MELSTIS, BUFF_REMOVE = MUTEKI2_REMOVE_MELSTIS},
+    [3022] = {label = "Melstis", frame = nil, BUFF_ADD = MUTEKI2_ADD_MELSTIS, BUFF_UPDATE = MUTEKI2_ADD_MELSTIS, BUFF_REMOVE = MUTEKI2_REMOVE_MELSTIS},
     
     --SZ
-    [94] = {frame = g.circle.sz, BUFF_ADD = MUTEKI2_ADD_SZ_BUFF, BUFF_UPDATE = MUTEKI2_ADD_SZ_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_SZ},
+    [94] = {label = "Safety Zone", frame = g.circle.sz, BUFF_ADD = MUTEKI2_ADD_SZ_BUFF, BUFF_UPDATE = MUTEKI2_ADD_SZ_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_SZ},
     --ST
-    [1021] = {frame = g.circle.st, BUFF_ADD = MUTEKI2_ADD_SZ_BUFF, BUFF_UPDATE = MUTEKI2_ADD_SZ_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_SZ},
+    [1021] = {label = "Sterea Thorf", frame = g.circle.st, BUFF_ADD = MUTEKI2_ADD_SZ_BUFF, BUFF_UPDATE = MUTEKI2_ADD_SZ_BUFF, BUFF_REMOVE = MUTEKI2_REMOVE_SZ},
   }
 end
 
@@ -311,27 +338,30 @@ function MUTEKI2_REMOVE_SZ(buff, frame)
 end
 
 
-function MUTEKI2_ADD_POTION_BUFF(buff, frame)
-  MUTEKI2_ADD_GAUGE_BUFF(buff, frame);
+function MUTEKI2_ADD_POTION_BUFF(buff, frame, label)
+  MUTEKI2_ADD_GAUGE_BUFF(buff, frame, label);
   local handle = session.GetMyHandle();
   local actor = world.GetActor(handle)
   pcall(effect.PlayActorEffect(actor, "F_sys_TPBOX_great_300", "None", 1.0, 6.0));
 end
 
 
-function MUTEKI2_ADD_AUSIRINE_BUFF(buff, frame)
+function MUTEKI2_ADD_AUSIRINE_BUFF(buff, frame, label)
   imcSound.PlaySoundEvent("premium_enchantchip");
-  MUTEKI2_ADD_GAUGE_BUFF(buff, frame);
+  MUTEKI2_ADD_GAUGE_BUFF(buff, frame, label);
 end
 
-function MUTEKI2_ADD_GAUGE_BUFF(buff, frame)
+function MUTEKI2_ADD_GAUGE_BUFF(buff, frame, label)
   local gauge = frame;
   gauge:ShowWindow(1);
   local time = math.floor(buff.time / 1000);
   MUTEKI2_START_GAUGE_DOWN(gauge, time, time);
 
   if g.melstis then
+    gauge:SetTextStat(1, "{@st48}{#00FF00}"..label.."{/}{/}")
     gauge:SetUserValue("PAUSE", 1);
+  else
+    gauge:SetTextStat(1, "{@st48}"..label.."{/}")
   end
 end
 
@@ -392,18 +422,32 @@ function MUTEKI2_PROCESS_COMMAND(command)
   local cmd = "";
 
   if #command > 0 then
-    cmd = table.remove(command, 1);
+    cmd = string.lower(table.remove(command, 1));
   else
-    --local msg = "ヘルプメッセージなど"
-    --return ui.MsgBox(msg,"","Nope")
-    MUTEKI2_TEST()
+    local msg = "Muteki2 説明{nl}"
+    msg = msg .. "/muteki2 lock{nl}"
+    msg = msg .. "位置のロック{nl}"
+    msg = msg .. "/muteki2 trace{nl}"
+    msg = msg .. "自キャラ追従モード{nl}"
+    msg = msg .. "/muteki2 fixed{nl}"
+    msg = msg .. "固定表示モード{nl}"
+    CHAT_SYSTEM(msg);
     return
   end
 
   if cmd == "lock" then
     MUTEKI2_TOGGLE_LOCK();
     return;
+  elseif cmd == "trace" then
+    MUTEKI2_CHANGE_MODE("trace");
+    CHAT_SYSTEM(string.format("[%s] trace mode", addonName));
+    return;
+  elseif cmd == "fixed" then
+    MUTEKI2_CHANGE_MODE("fixed");
+    CHAT_SYSTEM(string.format("[%s] fixed mode", addonName));
+    return;
   end
+
   CHAT_SYSTEM(string.format("[%s] Invalid Command", addonName));
 end
 
