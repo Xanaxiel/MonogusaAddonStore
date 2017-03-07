@@ -111,8 +111,10 @@ function MUTEKI2_CHANGE_MODE(mode)
     frame:Move(0, 0);
     frame:SetOffset(g.settings.position.x, g.settings.position.y);
     frame:StopUpdateScript("_FRAME_AUTOPOS");
+    mode = "fixed";
   end
-
+  
+  g.settings.mode = mode;
   MUTEKI2_SAVE_SETTINGS();
 end
 
