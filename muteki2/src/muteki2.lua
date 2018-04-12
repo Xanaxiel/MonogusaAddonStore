@@ -24,6 +24,7 @@ if not g.loaded then
     --有効/無効
     enable = true,
     mode = "fixed", --"FIXED" or "TRACE"
+    potionEffect = true,
     --フレーム表示場所
     position = {
       lock = false;
@@ -56,8 +57,16 @@ function MUTEKI2_ON_INIT(addon, frame)
       --設定ファイル読み込み失敗時処理
       CHAT_SYSTEM(string.format("[%s] cannot load setting files", addonName));
     else
-      --設定ファイル読み込み成功時処理
-      g.settings = t;
+      for k, v in pairs(t) do repeat
+        if g.settings[k] ~= nil then
+            break;
+        end 
+        
+        g.settings[k] = v
+      until true end
+      
+      --設定ファイル読み込み成功時処理      
+      g.settings = t;   
     end
     g.loaded = true;
   end
@@ -344,7 +353,9 @@ function MUTEKI2_ADD_POTION_BUFF(buff, frame, label)
   MUTEKI2_ADD_GAUGE_BUFF(buff, frame, label);
   local handle = session.GetMyHandle();
   local actor = world.GetActor(handle)
-  pcall(effect.PlayActorEffect(actor, "F_sys_TPBOX_great_300", "None", 1.0, 6.0));
+  if g.settings.potionEffect then
+    pcall(effect.PlayActorEffect(actor, "F_sys_TPBOX_great_300", "None", 1.0, 6.0));
+  end
 end
 
 
@@ -433,6 +444,8 @@ function MUTEKI2_PROCESS_COMMAND(command)
     msg = msg .. "自キャラ追従モード{nl}"
     msg = msg .. "/muteki2 fixed{nl}"
     msg = msg .. "固定表示モード{nl}"
+    msg = msg .. "/muteki2 potioneffect{nl}"
+    msg = msg .. "Toggle potion effects"
     CHAT_SYSTEM(msg);
     return
   end
@@ -447,6 +460,12 @@ function MUTEKI2_PROCESS_COMMAND(command)
   elseif cmd == "fixed" then
     MUTEKI2_CHANGE_MODE("fixed");
     CHAT_SYSTEM(string.format("[%s] fixed mode", addonName));
+    return;
+  elseif string.lower(cmd) == "potioneffect" then
+    MUTEKI2_CHANGE_MODE("fixed");
+    local isEnabled = (g.settings.potionEffect == true and false or true)
+    local message = (isEnabled == true and "enabled!" or "disabled!")
+    CHAT_SYSTEM(string.format("[%s] potion effect "..message, addonName));
     return;
   end
 
